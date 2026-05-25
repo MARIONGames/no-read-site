@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read — Settings</title>
+  <link rel="stylesheet" href="auth.css?v=9" />
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="music.html">Listen</a>
+        <a href="upload.html">Upload</a>
+        <a href="settings.html">Settings</a>
+        <a id="accountLink" href="login.html">Login</a>
+      </div>
+    </nav>
+
+    <main class="page-wrap">
+      <section class="page-title"><h1>Settings</h1><p>Profile and artist profile settings for your No Read account.</p></section>
+      <section class="panel" id="settingsPanel">
+        <form id="settingsForm">
+          <div class="grid two">
+            <label>Display name<input id="displayName" maxlength="32"></label>
+            <label>Artist name<input id="artistName" maxlength="80"></label>
+          </div>
+          <label>Bio<textarea id="bio" maxlength="500"></textarea></label>
+          <label>Artist bio<textarea id="artistBio" maxlength="1200"></textarea></label>
+          <div class="grid two">
+            <label>Profile image URL<input id="avatarUrl" placeholder="https://... or upload file below"></label>
+            <label>Profile image file<input id="avatarFile" type="file" accept="image/*"></label>
+          </div>
+          <div class="grid two">
+            <label>Banner URL<input id="bannerUrl" placeholder="https://... or upload file below"></label>
+            <label>Banner file<input id="bannerFile" type="file" accept="image/*"></label>
+          </div>
+          <div class="grid two">
+            <label>Artist banner URL<input id="artistBannerUrl" placeholder="https://... or upload file below"></label>
+            <label>Artist banner file<input id="artistBannerFile" type="file" accept="image/*"></label>
+          </div>
+          <button id="saveButton" type="submit">Save profile</button>
+        </form>
+        <div id="message" class="message"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script>
+    const Auth = window.NoReadAuth;
+    const msg = document.getElementById('message');
+    function showMessage(text, type = 'error') { msg.className = `message show ${type}`; msg.textContent = text; }
+    const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+      if (!file) return resolve('');
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+    function setValue(id, value) { document.getElementById(id).value = value || ''; }
+    async function fillProfile() {
+      const payload = await Auth.getMyUserProfile();
+      const user = payload.data?.user || Auth.getSavedUser() || {};
+      setValue('displayName', user.displayName);
+      setValue('artistName', user.artistName);
+      setValue('bio', user.bio);
+      setValue('artistBio', user.artistBio);
+      setValue('avatarUrl', user.avatarUrl);
+      setValue('bannerUrl', user.bannerUrl);
+      setValue('artistBannerUrl', user.artistBannerUrl);
+      Auth.saveUser(user);
+    }
+    document.getElementById('settingsForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = document.getElementById('saveButton');
+      button.disabled = true;
+      button.textContent = 'Saving...';
+      try {
+        const avatarFile = await fileToDataUrl(document.getElementById('avatarFile').files[0]);
+        const bannerFile = await fileToDataUrl(document.getElementById('bannerFile').files[0]);
+        const artistBannerFile = await fileToDataUrl(document.getElementById('artistBannerFile').files[0]);
+        const payload = {
+          displayName: document.getElementById('displayName').value.trim(),
+          artistName: document.getElementById('artistName').value.trim(),
+          bio: document.getElementById('bio').value,
+          artistBio: document.getElementById('artistBio').value,
+          avatarUrl: avatarFile || document.getElementById('avatarUrl').value.trim(),
+          bannerUrl: bannerFile || document.getElementById('bannerUrl').value.trim(),
+          artistBannerUrl: artistBannerFile || document.getElementById('artistBannerUrl').value.trim()
+        };
+        const result = await Auth.updateMyUserProfile(payload);
+        const user = result.data?.user || payload;
+        Auth.saveUser(user);
+        showMessage('Profile saved.', 'success');
+      } catch (error) {
+        showMessage(error.message || 'Could not save settings.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Save profile';
+      }
+    });
+    (async () => {
+      const state = await Auth.getSessionState({ verify: true });
+      if (!state.loggedIn) { location.href = 'login.html'; return; }
+      document.getElementById('accountLink').textContent = Auth.getDisplayName();
+      document.getElementById('accountLink').href = 'account.html';
+      await fillProfile().catch((error) => showMessage(error.message || 'Could not load profile.'));
+    })();
+  </script>
+</body>
+</html>

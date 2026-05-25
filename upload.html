@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read — Upload</title>
+  <link rel="stylesheet" href="auth.css?v=9" />
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="music.html">Listen</a>
+        <a href="upload.html">Upload</a>
+        <a href="settings.html">Settings</a>
+        <a id="accountLink" href="login.html">Login</a>
+      </div>
+    </nav>
+
+    <main class="page-wrap">
+      <section class="page-title">
+        <h1>Upload</h1>
+        <p>Only approved No Read roles can upload: artist, staff, moderator, admin, or owner.</p>
+      </section>
+
+      <section class="panel" id="accessBox"><p class="muted">Checking access...</p></section>
+
+      <section class="panel" id="uploadPanel" style="display:none">
+        <form id="uploadForm">
+          <div class="grid two">
+            <label>Song title<input id="title" required maxlength="120" placeholder="Song name"></label>
+            <label>Genre<input id="genre" maxlength="50" placeholder="Greek trap"></label>
+          </div>
+          <label>Description<textarea id="description" maxlength="1200" placeholder="Short info about the song"></textarea></label>
+          <div class="grid two">
+            <label>Audio file<input id="audioFile" type="file" accept="audio/*"></label>
+            <label>Or audio URL<input id="audioUrl" placeholder="https://...mp3"></label>
+          </div>
+          <div class="grid two">
+            <label>Cover image<input id="coverFile" type="file" accept="image/*"></label>
+            <label>Banner image<input id="bannerFile" type="file" accept="image/*"></label>
+          </div>
+          <label><span><input id="explicit" type="checkbox" style="width:auto;min-height:auto"> Explicit</span></label>
+          <button id="uploadButton" type="submit">Upload No Read song</button>
+        </form>
+        <div id="message" class="message"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script>
+    const Auth = window.NoReadAuth;
+    const uploadRoles = ['artist', 'staff', 'moderator', 'admin', 'owner'];
+    const accessBox = document.getElementById('accessBox');
+    const uploadPanel = document.getElementById('uploadPanel');
+    const msg = document.getElementById('message');
+
+    function showMessage(text, type = 'error') {
+      msg.className = `message show ${type}`;
+      msg.textContent = text;
+    }
+
+    const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+      if (!file) return resolve('');
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = document.getElementById('uploadButton');
+      button.disabled = true;
+      button.textContent = 'Uploading...';
+      showMessage('Uploading. Large files can take a moment.', 'success');
+      try {
+        const audioDataUrl = await fileToDataUrl(document.getElementById('audioFile').files[0]);
+        const coverImageDataUrl = await fileToDataUrl(document.getElementById('coverFile').files[0]);
+        const bannerImageDataUrl = await fileToDataUrl(document.getElementById('bannerFile').files[0]);
+        const payload = {
+          title: document.getElementById('title').value.trim(),
+          genre: document.getElementById('genre').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          audioUrl: document.getElementById('audioUrl').value.trim(),
+          audioDataUrl,
+          coverImageDataUrl,
+          bannerImageDataUrl,
+          explicit: document.getElementById('explicit').checked
+        };
+        const result = await Auth.uploadSong(payload);
+        const song = result.data?.song || result.song;
+        showMessage(`Uploaded: ${song?.title || payload.title}`, 'success');
+        event.target.reset();
+      } catch (error) {
+        showMessage(error.message || 'Upload failed.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Upload No Read song';
+      }
+    });
+
+    (async () => {
+      const state = await Auth.getSessionState({ verify: true });
+      if (!state.loggedIn) {
+        accessBox.innerHTML = '<p class="muted">You must login before uploading.</p><p style="margin-top:12px"><a class="button" href="login.html">Login</a></p>';
+        return;
+      }
+      document.getElementById('accountLink').textContent = Auth.getDisplayName();
+      document.getElementById('accountLink').href = 'account.html';
+      const role = state.user?.role || Auth.getSavedUser()?.role || 'user';
+      if (!uploadRoles.includes(role)) {
+        accessBox.innerHTML = `<p class="muted">Your role is <strong>${role}</strong>. Upload access is only for artist/staff/moderator/admin/owner.</p>`;
+        return;
+      }
+      accessBox.style.display = 'none';
+      uploadPanel.style.display = 'block';
+    })();
+  </script>
+</body>
+</html>

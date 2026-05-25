@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read Label — Official</title>
+  <meta name="description" content="No Read Label — Greek trap music label. Music, videos, listening links, about info, and fan accounts." />
+  <style>
+    :root {
+      --bg: #050505;
+      --bg-2: #0d0d10;
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel-strong: rgba(255, 255, 255, 0.10);
+      --text: #f7f7f7;
+      --muted: rgba(247, 247, 247, 0.66);
+      --line: rgba(255, 255, 255, 0.14);
+      --red: #ff1616;
+      --red-2: #b60000;
+      --blue: #0c8cff;
+      --blue-2: #005bd1;
+      --shadow: 0 25px 90px rgba(0, 0, 0, 0.5);
+      --radius: 28px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255, 22, 22, 0.22), transparent 34rem),
+        radial-gradient(circle at 80% 18%, rgba(12, 140, 255, 0.20), transparent 28rem),
+        linear-gradient(180deg, #050505 0%, #0a0a0d 48%, #050505 100%);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 54px 54px;
+      mask-image: radial-gradient(circle at center, black 0%, transparent 74%);
+      opacity: 0.75;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .site-shell {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .nav {
+      position: sticky;
+      top: 16px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(5, 5, 5, 0.72);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.72));
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      box-shadow: 0 0 35px rgba(255, 22, 22, 0.20);
+    }
+
+    .brand-mark img {
+      width: 88%;
+      height: 88%;
+      object-fit: contain;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-links a {
+      padding: 11px 14px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
+      transition: 180ms ease;
+    }
+
+    .nav-links a:hover {
+      color: #fff;
+      background: var(--panel-strong);
+    }
+
+    .nav-cta {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--red), var(--red-2));
+      color: white;
+      font-weight: 900;
+      box-shadow: 0 12px 40px rgba(255, 22, 22, 0.27);
+    }
+
+    .hero {
+      min-height: calc(100vh - 82px);
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      align-items: center;
+      gap: 34px;
+      padding: 84px 0 46px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      margin-bottom: 20px;
+      padding: 9px 12px;
+      border: 1px solid rgba(255, 22, 22, 0.40);
+      border-radius: 999px;
+      background: rgba(255, 22, 22, 0.09);
+      color: #ffd8d8;
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .pulse {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 0 0 rgba(255, 22, 22, 0.65);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      70% { box-shadow: 0 0 0 13px rgba(255, 22, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 22, 22, 0); }
+    }
+
+    h1 {
+      font-size: clamp(4rem, 10vw, 9rem);
+      line-height: 0.78;
+      letter-spacing: -0.09em;
+      text-transform: uppercase;
+      text-wrap: balance;
+    }
+
+    .hero h1 span {
+      display: block;
+      background: linear-gradient(90deg, #fff, #ffdfdf 42%, #ff1717 78%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 18px 35px rgba(255, 22, 22, 0.10));
+    }
+
+    .hero-copy {
+      max-width: 650px;
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: clamp(1.05rem, 2vw, 1.28rem);
+      line-height: 1.68;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 52px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: #fff;
+      font-weight: 900;
+      transition: transform 180ms ease, background 180ms ease, border 180ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      background: var(--panel-strong);
+      border-color: rgba(255, 255, 255, 0.24);
+    }
+
+    .btn.primary {
+      border: 0;
+      background: linear-gradient(135deg, var(--red), #ff4d4d 42%, var(--red-2));
+      box-shadow: 0 18px 48px rgba(255, 22, 22, 0.28);
+    }
+
+    .btn.blue {
+      border: 0;
+      background: linear-gradient(135deg, var(--blue), var(--blue-2));
+      box-shadow: 0 18px 48px rgba(12, 140, 255, 0.20);
+    }
+
+    .hero-card {
+      position: relative;
+      min-height: 610px;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 18px);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.025)),
+        radial-gradient(circle at 50% 35%, rgba(255, 22, 22, 0.21), transparent 25rem);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: -35%;
+      background: conic-gradient(from 180deg, transparent, rgba(255, 22, 22, 0.24), transparent, rgba(12, 140, 255, 0.20), transparent);
+      animation: spin 11s linear infinite;
+      opacity: 0.8;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: calc(var(--radius) + 16px);
+      background: rgba(8, 8, 10, 0.78);
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .logo-stage {
+      position: relative;
+      z-index: 2;
+      width: min(430px, 84vw);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 25%, #ffffff, #eeeeee 48%, #cfcfcf 100%);
+      box-shadow:
+        0 0 0 12px rgba(255,255,255,0.03),
+        0 0 0 1px rgba(255,255,255,0.20),
+        0 40px 100px rgba(0,0,0,0.58),
+        0 0 90px rgba(255, 22, 22, 0.24);
+    }
+
+    .logo-stage img {
+      width: 88%;
+      height: 88%;
+      object-fit: contain;
+      filter: drop-shadow(0 20px 30px rgba(0,0,0,0.22));
+    }
+
+    .tag-card {
+      position: absolute;
+      z-index: 4;
+      right: 24px;
+      bottom: 24px;
+      width: min(295px, calc(100% - 48px));
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.45);
+    }
+
+    .tag-card strong {
+      display: block;
+      font-size: 0.88rem;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+
+    .tag-card p {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .equalizer {
+      display: flex;
+      align-items: end;
+      gap: 6px;
+      height: 42px;
+      margin-top: 14px;
+    }
+
+    .equalizer i {
+      width: 8px;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--blue), var(--red));
+      animation: bounce 1.1s ease-in-out infinite;
+    }
+
+    .equalizer i:nth-child(2) { animation-delay: 0.1s; height: 31px; }
+    .equalizer i:nth-child(3) { animation-delay: 0.2s; height: 23px; }
+    .equalizer i:nth-child(4) { animation-delay: 0.3s; height: 38px; }
+    .equalizer i:nth-child(5) { animation-delay: 0.4s; height: 18px; }
+    .equalizer i:nth-child(6) { animation-delay: 0.5s; height: 29px; }
+
+    @keyframes bounce {
+      0%, 100% { transform: scaleY(0.45); opacity: 0.65; }
+      50% { transform: scaleY(1.05); opacity: 1; }
+    }
+
+    section {
+      padding: 74px 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .section-kicker {
+      margin-bottom: 10px;
+      color: #ffb8b8;
+      font-size: 0.82rem;
+      font-weight: 1000;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: clamp(2.15rem, 5vw, 4.3rem);
+      line-height: 0.95;
+      letter-spacing: -0.065em;
+      text-transform: uppercase;
+    }
+
+    .section-sub {
+      max-width: 520px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .profiles {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .profile-card {
+      min-height: 175px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+      box-shadow: 0 18px 60px rgba(0,0,0,0.18);
+      transition: 180ms ease;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .profile-card::after {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      right: -60px;
+      bottom: -70px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 22, 22, 0.24), transparent 70%);
+    }
+
+    .profile-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,255,255,0.30);
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+    }
+
+    .profile-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid var(--line);
+      font-size: 1.25rem;
+      font-weight: 1000;
+    }
+
+    .profile-card h3 {
+      font-size: 1.05rem;
+      letter-spacing: -0.03em;
+    }
+
+    .profile-card span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .release-grid {
+      grid-template-columns: 1.15fr 0.85fr;
+      align-items: stretch;
+    }
+
+    .release-main,
+    .release-list,
+    .about-panel,
+    .booking-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035));
+      box-shadow: 0 18px 70px rgba(0,0,0,0.22);
+    }
+
+    .release-main {
+      min-height: 435px;
+      display: grid;
+      align-content: end;
+      padding: 26px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .release-main::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(145deg, rgba(255,22,22,0.48), transparent 48%),
+        radial-gradient(circle at 80% 22%, rgba(12,140,255,0.35), transparent 18rem),
+        url("assets/no-read-logo.png");
+      background-repeat: no-repeat;
+      background-size: cover, cover, 74%;
+      background-position: center, center, center;
+      opacity: 0.32;
+      filter: saturate(1.12);
+    }
+
+    .release-main > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .release-badge {
+      width: fit-content;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 22, 22, 0.18);
+      border: 1px solid rgba(255, 22, 22, 0.38);
+      color: #ffd1d1;
+      font-size: 0.78rem;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+
+    .release-main h3 {
+      max-width: 560px;
+      font-size: clamp(2.1rem, 4vw, 4.6rem);
+      line-height: 0.9;
+      letter-spacing: -0.07em;
+      text-transform: uppercase;
+    }
+
+    .release-main p {
+      max-width: 510px;
+      margin-top: 16px;
+      color: rgba(255,255,255,0.74);
+      line-height: 1.55;
+    }
+
+    .release-list {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .track {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .track-number {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,22,22,0.28), rgba(12,140,255,0.20));
+      font-weight: 1000;
+    }
+
+    .track h4 {
+      font-size: 1rem;
+      letter-spacing: -0.025em;
+    }
+
+    .track p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    .play {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff;
+      color: #050505;
+      font-size: 0.85rem;
+      font-weight: 1000;
+    }
+
+    .about-grid {
+      grid-template-columns: 0.92fr 1.08fr;
+    }
+
+    .about-panel {
+      padding: 28px;
+    }
+
+    .about-panel p {
+      color: var(--muted);
+      line-height: 1.72;
+      font-size: 1.04rem;
+    }
+
+    .stats {
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 20px;
+    }
+
+    .stat {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid var(--line);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 2rem;
+      letter-spacing: -0.06em;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .roster {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .artist {
+      min-height: 260px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03)),
+        radial-gradient(circle at 30% 20%, rgba(255,22,22,0.18), transparent 13rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: end;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .artist::before {
+      content: "";
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.95) url("assets/no-read-logo.png") center/78% no-repeat;
+      opacity: 0.9;
+    }
+
+    .artist h3 {
+      font-size: 1.55rem;
+      letter-spacing: -0.045em;
+    }
+
+    .artist p {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .booking-panel {
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .booking-panel::after {
+      content: "NO READ";
+      position: absolute;
+      right: -18px;
+      bottom: -14px;
+      color: rgba(255,255,255,0.035);
+      font-size: clamp(4rem, 11vw, 9rem);
+      font-weight: 1000;
+      letter-spacing: -0.09em;
+      pointer-events: none;
+    }
+
+    .booking-panel p {
+      color: var(--muted);
+      line-height: 1.68;
+      margin-top: 14px;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.34);
+      color: #fff;
+      font: inherit;
+      padding: 15px 16px;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: rgba(255,22,22,0.60);
+      box-shadow: 0 0 0 4px rgba(255,22,22,0.10);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .footer {
+      padding: 30px 0 46px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .mini-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .mini-links a {
+      color: rgba(255,255,255,0.72);
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .release-grid,
+      .about-grid,
+      .booking-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 60px;
+      }
+
+      .hero-card {
+        min-height: 520px;
+      }
+
+      .profiles {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .roster {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .site-shell {
+        width: min(100% - 22px, var(--max));
+      }
+
+      .nav {
+        align-items: flex-start;
+        border-radius: 26px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .brand span {
+        font-size: 0.94rem;
+      }
+
+      .hero {
+        min-height: auto;
+        padding: 54px 0 26px;
+      }
+
+      h1 {
+        font-size: clamp(3.4rem, 17vw, 5.4rem);
+      }
+
+      .hero-card {
+        min-height: 430px;
+        padding: 16px;
+      }
+
+      .tag-card {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        margin-top: 20px;
+      }
+
+      .logo-stage {
+        width: min(315px, 80vw);
+      }
+
+      .profiles,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .section-sub {
+        margin-top: 14px;
+      }
+
+      .track {
+        grid-template-columns: 48px 1fr;
+      }
+
+      .play {
+        display: none;
+      }
+
+      .footer-inner {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="#top">
+        <span class="brand-mark"><img src="assets/no-read-logo.png" alt="No Read logo"></span>
+        <span>No Read Label</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#profiles">Profiles</a>
+        <a href="music.html">Listen</a>
+        <a href="upload.html">Upload</a>
+        <a href="settings.html">Settings</a>
+        <a href="#about">About</a>
+        <a id="navAccountLink" href="login.html">Account</a>
+      </div>
+
+      <a id="navAuthCta" class="nav-cta" href="login.html">Login / Register</a>
+    </nav>
+
+    <main id="top">
+      <section class="hero">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> Greece-made trap label</div>
+          <h1><span>No Read</span><span>Label</span></h1>
+          <p class="hero-copy">
+            The official No Read Label listening hub — built for fans to find the real profiles, hear No Read songs, watch videos, create a fan account, and understand the brand. Upload access is locked to approved No Read roles only.
+          </p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#profiles">Open Profiles</a>
+            <a class="btn blue" href="music.html">Listen</a>
+            <a class="btn" href="upload.html">Upload</a>
+            <a class="btn" href="#about">About</a>
+          </div>
+        </div>
+
+        <div class="hero-card" aria-label="No Read logo showcase">
+          <div class="logo-stage">
+            <img src="assets/no-read-logo.png" alt="No Read logo">
+          </div>
+
+          <aside class="tag-card">
+            <strong>Official links only</strong>
+            <p>Spotify, YouTube, TikTok, SoundCloud and Instagram profiles in one clean listening hub.</p>
+            <div class="equalizer" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="profiles">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">All platforms</div>
+            <h2>Official Profiles</h2>
+          </div>
+          <p class="section-sub">Official No Read profile links go here. Visitors can listen, watch, follow, or login — nothing else.</p>
+        </div>
+
+        <div class="grid profiles">
+          <a class="profile-card" href="#" aria-label="No Read on Spotify">
+            <div class="profile-icon">S</div>
+            <div>
+              <h3>Spotify</h3>
+              <span>Music profile</span>
+            </div>
+          </a>
+
+          <a class="profile-card" href="https://www.youtube.com/@noreadlabel" target="_blank" rel="noopener noreferrer" aria-label="No Read on YouTube">
+            <div class="profile-icon">▶</div>
+            <div>
+              <h3>YouTube</h3>
+              <span>Videos & drops</span>
+            </div>
+          </a>
+
+          <a class="profile-card" href="https://www.tiktok.com/@noreadlabel" target="_blank" rel="noopener noreferrer" aria-label="No Read on TikTok">
+            <div class="profile-icon">T</div>
+            <div>
+              <h3>TikTok</h3>
+              <span>Clips & previews</span>
+            </div>
+          </a>
+
+          <a class="profile-card" href="#" aria-label="No Read on Instagram">
+            <div class="profile-icon">IG</div>
+            <div>
+              <h3>Instagram</h3>
+              <span>Posts & stories</span>
+            </div>
+          </a>
+
+          <a class="profile-card" href="#" aria-label="No Read on SoundCloud">
+            <div class="profile-icon">SC</div>
+            <div>
+              <h3>SoundCloud</h3>
+              <span>Demos & leaks</span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section id="music">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Listen only</div>
+            <h2>Music Hub</h2>
+          </div>
+          <p class="section-sub">A simple listening area that sends fans to the official No Read profiles. This page does not allow anyone to upload, publish, or release music.</p>
+        </div>
+
+        <div class="grid release-grid">
+          <article class="release-main">
+            <div class="release-badge">Fan access</div>
+            <h3>Listen on official profiles</h3>
+            <p>No Read does not give public release access. Fans use this site only to open the real profiles, listen to music, watch videos, follow the label, and manage a fan account.</p>
+          </article>
+
+          <div class="release-list">
+            <article class="track">
+              <div class="track-number">01</div>
+              <div>
+                <h4>Spotify Profile</h4>
+                <p>Stream official No Read music</p>
+              </div>
+              <span class="play">▶</span>
+            </article>
+
+            <article class="track">
+              <div class="track-number">02</div>
+              <div>
+                <h4>YouTube Channel</h4>
+                <p>Watch official videos and uploads</p>
+              </div>
+              <span class="play">▶</span>
+            </article>
+
+            <article class="track">
+              <div class="track-number">03</div>
+              <div>
+                <h4>SoundCloud</h4>
+                <p>Listen to official audio drops</p>
+              </div>
+              <span class="play">▶</span>
+            </article>
+
+            <article class="track">
+              <div class="track-number">04</div>
+              <div>
+                <h4>TikTok / Instagram</h4>
+                <p>Follow clips, previews, and updates</p>
+              </div>
+              <span class="play">▶</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="about">
+        <div class="grid about-grid">
+          <div>
+            <div class="section-kicker">Identity</div>
+            <h2>No books. No rules. No Read.</h2>
+          </div>
+
+          <article class="about-panel">
+            <p>
+              No Read Label is a Greece-centered trap label/project with a premium street identity: black base, aggressive red, electric blue, big logo presence, and a clean hub that sends fans straight to the official music profiles. This website is for listening, account login, and information only — not for public releasing or uploads.
+            </p>
+
+            <div class="grid stats">
+              <div class="stat">
+                <strong>GR</strong>
+                <span>Greek trap direction</span>
+              </div>
+              <div class="stat">
+                <strong>5+</strong>
+                <span>Profile platforms</span>
+              </div>
+              <div class="stat">
+                <strong>2026</strong>
+                <span>Brand era</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <p>© 2026 Marios kouretis. All Rights Reserved.</p>
+        <div class="mini-links">
+          <a href="#profiles">Spotify</a>
+          <a href="https://www.youtube.com/@noreadlabel" target="_blank" rel="noopener noreferrer">YouTube</a>
+          <a href="https://www.tiktok.com/@noreadlabel" target="_blank" rel="noopener noreferrer">TikTok</a>
+          <a id="footerAccountLink" href="login.html">Account</a>
+          <a href="#profiles">Instagram</a>
+          <a href="#profiles">SoundCloud</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script>
+    (async () => {
+      const accountLink = document.getElementById('navAccountLink');
+      const footerAccountLink = document.getElementById('footerAccountLink');
+      const cta = document.getElementById('navAuthCta');
+
+      const applyLoggedInUi = (user) => {
+        const name = window.NoReadAuth.getDisplayName() || (user && (user.username || user.name || user.email)) || 'Account';
+        if (accountLink) {
+          accountLink.href = 'account.html';
+          accountLink.textContent = name;
+        }
+        if (footerAccountLink) {
+          footerAccountLink.href = 'account.html';
+          footerAccountLink.textContent = name;
+        }
+        if (cta) {
+          cta.href = 'account.html';
+          cta.textContent = name;
+          cta.title = 'Open your No Read account';
+        }
+      };
+
+      const local = await window.NoReadAuth.getSessionState({ verify: false });
+      if (local.loggedIn) applyLoggedInUi(local.user);
+
+      const live = await window.NoReadAuth.getSessionState({ verify: true });
+      if (live.loggedIn) applyLoggedInUi(live.user);
+    })();
+  </script>
+</body>
+</html>

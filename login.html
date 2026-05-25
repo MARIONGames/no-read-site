@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No Read Label — Login</title>
+  <meta name="description" content="Login to your No Read Label fan account.">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
+      <div class="nav-links">
+        <a href="index.html#profiles">Profiles</a>
+        <a href="index.html#music">Listen</a>
+        <a href="index.html#about">About</a>
+        <a href="register.html">Register</a>
+      </div>
+    </nav>
+
+    <main class="auth-wrap">
+      <section class="hero">
+        <h1><span>Fan</span><span>Login</span></h1>
+        <p>Sign in to your No Read account. The website stays for listening, official profiles, and label information — accounts do not give public release or upload access.</p>
+        <div class="notice">Login connects to the official No Read account system.</div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="logo-box"><img src="assets/no-read-logo.png" alt="No Read logo"></div>
+          <h2>Login</h2>
+          <p>Use your username and password.</p>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <form id="loginForm">
+          <label>
+            Username
+            <input id="username" name="username" autocomplete="username" required minlength="3" placeholder="noreadfan">
+          </label>
+
+          <label>
+            Password
+            <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="Your password">
+          </label>
+
+          <button id="submitBtn" type="submit">Login</button>
+        </form>
+
+        <p class="switch">No account yet? <a href="register.html">Create one</a></p>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script>
+
+    (async () => {
+      const state = await window.NoReadAuth.getSessionState({ verify: true });
+      if (state.loggedIn) {
+        window.location.replace('account.html');
+      }
+    })();
+
+    const form = document.getElementById('loginForm');
+    const btn = document.getElementById('submitBtn');
+    const message = document.getElementById('message');
+
+    const showMessage = (text, type = '') => {
+      message.textContent = text;
+      message.className = `message show ${type}`;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      btn.disabled = true;
+      btn.textContent = 'Logging in...';
+      showMessage('Connecting to No Read accounts...', '');
+
+      try {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        const loginPayload = await window.NoReadAuth.loginAccount({ username, password });
+        console.log('No Read login response:', loginPayload);
+
+        const user = window.NoReadAuth.extractAuthUser(loginPayload, { username });
+        window.NoReadAuth.saveUser(user || { username });
+
+        showMessage('Login accepted. Opening your account...', 'success');
+        setTimeout(() => { window.location.href = 'account.html'; }, 550);
+      } catch (error) {
+        showMessage(error && error.message ? error.message : 'Login failed.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Login';
+      }
+    });
+  </script>
+</body>
+</html>

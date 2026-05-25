@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read — Listen</title>
+  <link rel="stylesheet" href="auth.css?v=9" />
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="music.html">Listen</a>
+        <a href="upload.html">Upload</a>
+        <a href="settings.html">Settings</a>
+        <a id="accountLink" href="login.html">Login</a>
+      </div>
+    </nav>
+
+    <main class="page-wrap">
+      <section class="page-title">
+        <h1>Listen</h1>
+        <p>No Read songs only. Every stream starts through the No Read ad gate, then the player unlocks the song.</p>
+      </section>
+
+      <section class="panel">
+        <div class="grid two">
+          <label>Search
+            <input id="searchInput" placeholder="Search songs, artists, genres">
+          </label>
+          <label>Genre
+            <input id="genreInput" placeholder="trap, drill, freestyle...">
+          </label>
+        </div>
+        <div style="height:14px"></div>
+        <button id="searchButton" type="button">Search No Read songs</button>
+      </section>
+
+      <section class="grid three" id="songsGrid"></section>
+
+      <section class="panel admin-only" id="adminPanel">
+        <div class="page-title">
+          <h1 style="font-size:clamp(2rem,5vw,4rem)">Owner Panel</h1>
+          <p>Admin/owner only: take down songs, restore songs, or ban accounts.</p>
+        </div>
+        <div class="grid two">
+          <label>Ban user ID
+            <input id="banUserId" placeholder="Account id">
+          </label>
+          <label>Reason
+            <input id="banReason" placeholder="Reason">
+          </label>
+        </div>
+        <div style="height:12px"></div>
+        <button id="banButton" type="button" class="secondary">Ban account</button>
+        <div style="height:18px"></div>
+        <div class="table" id="adminSongs"></div>
+      </section>
+
+      <section class="player-bar" id="playerBar">
+        <div class="player-meta">
+          <div>
+            <strong id="nowPlaying">Nothing playing</strong>
+            <p class="muted" id="nowArtist">Choose a song to start.</p>
+          </div>
+          <span class="pill" id="adStatus">Ready</span>
+        </div>
+        <div class="ad-box" id="adBox"></div>
+        <audio id="audioPlayer" controls preload="none"></audio>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script>
+    const Auth = window.NoReadAuth;
+    const songsGrid = document.getElementById('songsGrid');
+    const player = document.getElementById('audioPlayer');
+    const nowPlaying = document.getElementById('nowPlaying');
+    const nowArtist = document.getElementById('nowArtist');
+    const adBox = document.getElementById('adBox');
+    const adStatus = document.getElementById('adStatus');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminSongs = document.getElementById('adminSongs');
+
+    const apiUrl = (path) => /^https?:\/\//.test(path) ? path : `${Auth.apiBaseUrl()}${path}`;
+    const roleAllowsAdmin = (role) => role === 'admin' || role === 'owner';
+    const roleAllowsUpload = (role) => ['artist','staff','moderator','admin','owner'].includes(role);
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+    }
+
+    function songCover(song) {
+      return song.coverImageUrl ? apiUrl(song.coverImageUrl) : 'assets/no-read-logo.png';
+    }
+
+    function renderSongs(songs) {
+      if (!songs.length) {
+        songsGrid.innerHTML = '<article class="panel"><p class="muted">No songs are published yet.</p></article>';
+        return;
+      }
+      songsGrid.innerHTML = songs.map(song => `
+        <article class="song-card">
+          <img class="song-cover" src="${escapeHtml(songCover(song))}" alt="${escapeHtml(song.title)} cover">
+          <div>
+            <h3>${escapeHtml(song.title)}</h3>
+            <p>${escapeHtml(song.artist?.artistName || song.artist?.displayName || 'No Read Artist')}</p>
+            <p class="muted">${escapeHtml(song.genre || 'No genre')} ${song.explicit ? '• Explicit' : ''}</p>
+          </div>
+          <div class="song-actions">
+            <button type="button" onclick="playSong(${song.id})">Play</button>
+            ${song.artist?.username ? `<a class="button secondary" href="artist.html?username=${encodeURIComponent(song.artist.username)}">Artist</a>` : ''}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    async function loadSongs() {
+      songsGrid.innerHTML = '<article class="panel"><p class="muted">Loading No Read songs...</p></article>';
+      const q = document.getElementById('searchInput').value.trim();
+      const genre = document.getElementById('genreInput').value.trim();
+      const payload = await Auth.listSongs({ q, genre });
+      renderSongs(payload.data?.songs || payload.songs || []);
+    }
+
+    async function playSong(songId) {
+      try {
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+        adBox.classList.add('show');
+        adStatus.textContent = 'Ad required';
+        adBox.textContent = 'Loading ad...';
+
+        const payload = await Auth.startSongPlay(songId);
+        const data = payload.data || payload;
+        const song = data.song;
+        const ad = data.ad || { durationSeconds: 5 };
+        nowPlaying.textContent = song.title;
+        nowArtist.textContent = song.artist?.artistName || song.artist?.displayName || 'No Read Artist';
+
+        let remaining = Number(ad.durationSeconds || 5);
+        adBox.innerHTML = `<strong>${escapeHtml(ad.title || 'No Read ad')}</strong><p>${escapeHtml(ad.message || 'The song starts after this ad.')}</p><p>Unlocking in <span id="countdown">${remaining}</span>s</p>`;
+
+        const timer = setInterval(async () => {
+          remaining -= 1;
+          const counter = document.getElementById('countdown');
+          if (counter) counter.textContent = Math.max(remaining, 0);
+          if (remaining <= 0) {
+            clearInterval(timer);
+            adStatus.textContent = 'Unlocking';
+            try {
+              const donePayload = await Auth.completeSongAd(data.sessionId);
+              const done = donePayload.data || donePayload;
+              player.src = apiUrl(done.streamUrl);
+              adBox.classList.remove('show');
+              adStatus.textContent = 'Playing unlocked';
+              await player.play().catch(() => {});
+            } catch (error) {
+              adStatus.textContent = 'Ad failed';
+              adBox.textContent = error.message || 'Could not unlock this song.';
+            }
+          }
+        }, 1000);
+      } catch (error) {
+        adBox.classList.add('show');
+        adBox.textContent = error.message || 'Could not play this song.';
+        adStatus.textContent = 'Error';
+      }
+    }
+
+    async function loadAdminPanel(user) {
+      if (!roleAllowsAdmin(user?.role)) return;
+      adminPanel.classList.add('show');
+      const payload = await Auth.adminListSongs();
+      const songs = payload.data?.songs || payload.songs || [];
+      adminSongs.innerHTML = songs.length ? songs.map(song => `
+        <div class="table-row">
+          <strong>${escapeHtml(song.title)}</strong>
+          <span class="muted">${escapeHtml(song.artist?.artistName || song.artist?.displayName || 'Unknown')}</span>
+          <span class="pill">${escapeHtml(song.status)}</span>
+          <div class="song-actions">
+            <button type="button" class="secondary" onclick="takeDownSong(${song.id})">Take down</button>
+            <button type="button" class="secondary" onclick="restoreSong(${song.id})">Restore</button>
+          </div>
+        </div>
+      `).join('') : '<p class="muted">No songs yet.</p>';
+    }
+
+    async function takeDownSong(id) {
+      const reason = prompt('Reason for taking this song down?') || 'Taken down by admin';
+      await Auth.adminTakeDownSong(id, reason);
+      await loadAdminPanel((await Auth.getSessionState()).user);
+      await loadSongs();
+    }
+
+    async function restoreSong(id) {
+      await Auth.adminRestoreSong(id);
+      await loadAdminPanel((await Auth.getSessionState()).user);
+      await loadSongs();
+    }
+
+    document.getElementById('banButton').addEventListener('click', async () => {
+      const id = document.getElementById('banUserId').value.trim();
+      const reason = document.getElementById('banReason').value.trim() || 'Banned from owner panel';
+      if (!id) return alert('Type a user ID first.');
+      await Auth.adminBanUser(id, reason);
+      alert('Account banned.');
+    });
+
+    document.getElementById('searchButton').addEventListener('click', loadSongs);
+    window.playSong = playSong;
+    window.takeDownSong = takeDownSong;
+    window.restoreSong = restoreSong;
+
+    (async () => {
+      const state = await Auth.getSessionState({ verify: true });
+      if (state.loggedIn) {
+        document.getElementById('accountLink').textContent = Auth.getDisplayName();
+        document.getElementById('accountLink').href = 'account.html';
+        await loadAdminPanel(state.user || {});
+      }
+      await loadSongs();
+    })();
+  </script>
+</body>
+</html>
