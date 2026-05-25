@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Settings</title>
-  <link rel="stylesheet" href="auth.css?v=9" />
+  <link rel="stylesheet" href="auth.css?v=20260525-2" />
 </head>
 <body>
   <div class="shell">
@@ -15,12 +15,13 @@
         <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
+        <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
         <a id="accountLink" href="login.html">Login</a>
       </div>
     </nav>
 
     <main class="page-wrap">
-      <section class="page-title"><h1>Settings</h1><p>Profile and artist profile settings for your No Read account.</p></section>
+      <section class="page-title"><h1>Settings</h1><p>Change your account profile. If you are an artist, these details also appear on your artist page and your uploaded songs list automatically.</p></section>
       <section class="panel" id="settingsPanel">
         <form id="settingsForm">
           <div class="grid two">
@@ -30,15 +31,19 @@
           <label>Bio<textarea id="bio" maxlength="500"></textarea></label>
           <label>Artist bio<textarea id="artistBio" maxlength="1200"></textarea></label>
           <div class="grid two">
-            <label>Profile image URL<input id="avatarUrl" placeholder="https://... or upload file below"></label>
-            <label>Profile image file<input id="avatarFile" type="file" accept="image/*"></label>
+            <label>Profile image URL<input id="profileImage" placeholder="https://... or upload file below"></label>
+            <label>Profile image file<input id="profileImageFile" type="file" accept="image/*"></label>
           </div>
           <div class="grid two">
-            <label>Banner URL<input id="bannerUrl" placeholder="https://... or upload file below"></label>
-            <label>Banner file<input id="bannerFile" type="file" accept="image/*"></label>
+            <label>Banner URL<input id="bannerImage" placeholder="https://... or upload file below"></label>
+            <label>Banner file<input id="bannerImageFile" type="file" accept="image/*"></label>
           </div>
           <div class="grid two">
-            <label>Artist banner URL<input id="artistBannerUrl" placeholder="https://... or upload file below"></label>
+            <label>Artist image URL<input id="artistImage" placeholder="https://... or upload file below"></label>
+            <label>Artist image file<input id="artistImageFile" type="file" accept="image/*"></label>
+          </div>
+          <div class="grid two">
+            <label>Artist banner URL<input id="artistBanner" placeholder="https://... or upload file below"></label>
             <label>Artist banner file<input id="artistBannerFile" type="file" accept="image/*"></label>
           </div>
           <button id="saveButton" type="submit">Save profile</button>
@@ -48,7 +53,7 @@
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script src="auth-client.browser.js?v=20260525-2"></script>
   <script>
     const Auth = window.NoReadAuth;
     const msg = document.getElementById('message');
@@ -61,16 +66,19 @@
       reader.readAsDataURL(file);
     });
     function setValue(id, value) { document.getElementById(id).value = value || ''; }
+    function first(...values) { return values.find((value) => value !== undefined && value !== null && value !== '') || ''; }
     async function fillProfile() {
       const payload = await Auth.getMyUserProfile();
-      const user = payload.data?.user || Auth.getSavedUser() || {};
-      setValue('displayName', user.displayName);
+      const data = payload.data || payload;
+      const user = data.user || data.profile || Auth.getSavedUser() || {};
+      setValue('displayName', first(user.displayName, user.name));
       setValue('artistName', user.artistName);
       setValue('bio', user.bio);
       setValue('artistBio', user.artistBio);
-      setValue('avatarUrl', user.avatarUrl);
-      setValue('bannerUrl', user.bannerUrl);
-      setValue('artistBannerUrl', user.artistBannerUrl);
+      setValue('profileImage', first(user.profileImage, user.profileImageUrl, user.avatarUrl));
+      setValue('bannerImage', first(user.bannerImage, user.bannerImageUrl, user.bannerUrl));
+      setValue('artistImage', first(user.artistImage, user.artistImageUrl));
+      setValue('artistBanner', first(user.artistBanner, user.artistBannerUrl));
       Auth.saveUser(user);
     }
     document.getElementById('settingsForm').addEventListener('submit', async (event) => {
@@ -79,20 +87,28 @@
       button.disabled = true;
       button.textContent = 'Saving...';
       try {
-        const avatarFile = await fileToDataUrl(document.getElementById('avatarFile').files[0]);
-        const bannerFile = await fileToDataUrl(document.getElementById('bannerFile').files[0]);
+        const profileImageFile = await fileToDataUrl(document.getElementById('profileImageFile').files[0]);
+        const bannerImageFile = await fileToDataUrl(document.getElementById('bannerImageFile').files[0]);
+        const artistImageFile = await fileToDataUrl(document.getElementById('artistImageFile').files[0]);
         const artistBannerFile = await fileToDataUrl(document.getElementById('artistBannerFile').files[0]);
+        const profileImage = profileImageFile || document.getElementById('profileImage').value.trim();
+        const bannerImage = bannerImageFile || document.getElementById('bannerImage').value.trim();
+        const artistImage = artistImageFile || document.getElementById('artistImage').value.trim();
+        const artistBanner = artistBannerFile || document.getElementById('artistBanner').value.trim();
         const payload = {
           displayName: document.getElementById('displayName').value.trim(),
+          name: document.getElementById('displayName').value.trim(),
           artistName: document.getElementById('artistName').value.trim(),
           bio: document.getElementById('bio').value,
           artistBio: document.getElementById('artistBio').value,
-          avatarUrl: avatarFile || document.getElementById('avatarUrl').value.trim(),
-          bannerUrl: bannerFile || document.getElementById('bannerUrl').value.trim(),
-          artistBannerUrl: artistBannerFile || document.getElementById('artistBannerUrl').value.trim()
+          profileImage, profileImageUrl: profileImage, avatarUrl: profileImage,
+          bannerImage, bannerImageUrl: bannerImage, bannerUrl: bannerImage,
+          artistImage, artistImageUrl: artistImage,
+          artistBanner, artistBannerUrl: artistBanner
         };
         const result = await Auth.updateMyUserProfile(payload);
-        const user = result.data?.user || payload;
+        const data = result.data || result;
+        const user = data.user || data.profile || { ...Auth.getSavedUser(), ...payload };
         Auth.saveUser(user);
         showMessage('Profile saved.', 'success');
       } catch (error) {

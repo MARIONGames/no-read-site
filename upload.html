@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Upload</title>
-  <link rel="stylesheet" href="auth.css?v=9" />
+  <link rel="stylesheet" href="auth.css?v=20260525-2" />
 </head>
 <body>
   <div class="shell">
@@ -15,6 +15,7 @@
         <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
+        <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
         <a id="accountLink" href="login.html">Login</a>
       </div>
     </nav>
@@ -22,7 +23,7 @@
     <main class="page-wrap">
       <section class="page-title">
         <h1>Upload</h1>
-        <p>Only approved No Read roles can upload: artist, staff, moderator, admin, or owner.</p>
+        <p>Only approved No Read roles can upload: artist, staff, moderator, admin, or owner. Uploaded songs automatically create/update the artist page for the uploader.</p>
       </section>
 
       <section class="panel" id="accessBox"><p class="muted">Checking access...</p></section>
@@ -40,7 +41,7 @@
           </div>
           <div class="grid two">
             <label>Cover image<input id="coverFile" type="file" accept="image/*"></label>
-            <label>Banner image<input id="bannerFile" type="file" accept="image/*"></label>
+            <label>Song banner image<input id="bannerFile" type="file" accept="image/*"></label>
           </div>
           <label><span><input id="explicit" type="checkbox" style="width:auto;min-height:auto"> Explicit</span></label>
           <button id="uploadButton" type="submit">Upload No Read song</button>
@@ -50,7 +51,7 @@
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-1"></script>
+  <script src="auth-client.browser.js?v=20260525-2"></script>
   <script>
     const Auth = window.NoReadAuth;
     const uploadRoles = ['artist', 'staff', 'moderator', 'admin', 'owner'];
@@ -58,18 +59,23 @@
     const uploadPanel = document.getElementById('uploadPanel');
     const msg = document.getElementById('message');
 
-    function showMessage(text, type = 'error') {
-      msg.className = `message show ${type}`;
-      msg.textContent = text;
-    }
+    function showMessage(text, type = 'error') { msg.className = `message show ${type}`; msg.textContent = text; }
 
-    const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-      if (!file) return resolve('');
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Could not read file'));
-      reader.readAsDataURL(file);
-    });
+    function buildUploadBody() {
+      const audioFile = document.getElementById('audioFile').files[0];
+      const coverFile = document.getElementById('coverFile').files[0];
+      const bannerFile = document.getElementById('bannerFile').files[0];
+      const form = new FormData();
+      form.append('title', document.getElementById('title').value.trim());
+      form.append('genre', document.getElementById('genre').value.trim());
+      form.append('description', document.getElementById('description').value.trim());
+      form.append('audioUrl', document.getElementById('audioUrl').value.trim());
+      form.append('explicit', document.getElementById('explicit').checked ? 'true' : 'false');
+      if (audioFile) { form.append('audioFile', audioFile); form.append('audio', audioFile); }
+      if (coverFile) { form.append('coverFile', coverFile); form.append('cover', coverFile); }
+      if (bannerFile) { form.append('bannerFile', bannerFile); form.append('banner', bannerFile); }
+      return form;
+    }
 
     document.getElementById('uploadForm').addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -78,23 +84,18 @@
       button.textContent = 'Uploading...';
       showMessage('Uploading. Large files can take a moment.', 'success');
       try {
-        const audioDataUrl = await fileToDataUrl(document.getElementById('audioFile').files[0]);
-        const coverImageDataUrl = await fileToDataUrl(document.getElementById('coverFile').files[0]);
-        const bannerImageDataUrl = await fileToDataUrl(document.getElementById('bannerFile').files[0]);
-        const payload = {
-          title: document.getElementById('title').value.trim(),
-          genre: document.getElementById('genre').value.trim(),
-          description: document.getElementById('description').value.trim(),
-          audioUrl: document.getElementById('audioUrl').value.trim(),
-          audioDataUrl,
-          coverImageDataUrl,
-          bannerImageDataUrl,
-          explicit: document.getElementById('explicit').checked
-        };
-        const result = await Auth.uploadSong(payload);
-        const song = result.data?.song || result.song;
-        showMessage(`Uploaded: ${song?.title || payload.title}`, 'success');
+        if (!document.getElementById('audioFile').files[0] && !document.getElementById('audioUrl').value.trim()) {
+          throw new Error('Choose an audio file or paste an audio URL.');
+        }
+        const result = await Auth.uploadSong(buildUploadBody());
+        const song = result.data?.song || result.song || result.data || {};
+        const user = Auth.getSavedUser() || {};
+        const username = song.artist?.username || song.artistUsername || user.username;
+        showMessage(`Uploaded: ${song.title || document.getElementById('title').value.trim()}`, 'success');
         event.target.reset();
+        if (username) {
+          msg.innerHTML = `Uploaded. <a href="artist.html?username=${encodeURIComponent(username)}">Open artist page</a> or <a href="music.html">listen page</a>.`;
+        }
       } catch (error) {
         showMessage(error.message || 'Upload failed.');
       } finally {
@@ -111,9 +112,9 @@
       }
       document.getElementById('accountLink').textContent = Auth.getDisplayName();
       document.getElementById('accountLink').href = 'account.html';
-      const role = state.user?.role || Auth.getSavedUser()?.role || 'user';
-      if (!uploadRoles.includes(role)) {
-        accessBox.innerHTML = `<p class="muted">Your role is <strong>${role}</strong>. Upload access is only for artist/staff/moderator/admin/owner.</p>`;
+      const roles = Auth.getRoleList(state.user || Auth.getSavedUser());
+      if (!roles.some((role) => uploadRoles.includes(role))) {
+        accessBox.innerHTML = `<p class="muted">Your role is <strong>${roles.join(', ') || 'user'}</strong>. Upload access is only for artist/staff/moderator/admin/owner.</p>`;
         return;
       }
       accessBox.style.display = 'none';

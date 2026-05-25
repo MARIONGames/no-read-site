@@ -3,13 +3,14 @@ const { get, post } = require('./http');
 
 const listSongs = (query = {}) => get('/music/songs', { query });
 const getSong = (id) => get(`/music/songs/${encodeURIComponent(id)}`);
-const uploadSong = (payload) => post('/music/songs', payload);
-const startSongPlay = (id) => post(`/music/songs/${encodeURIComponent(id)}/play`);
-const completeSongAd = (sessionId) => post(`/music/play-sessions/${encodeURIComponent(sessionId)}/complete-ad`);
-const getArtist = (username) => get(`/music/artists/${encodeURIComponent(username)}`);
+const uploadSong = (payload) => post('/music/upload', payload);
+const startSongPlay = (id) => post(`/music/play-session/${encodeURIComponent(id)}`);
+const completeSongAd = (playSessionId) => post('/music/ad-complete', { playSessionId, sessionId: playSessionId });
+const getArtist = (username) => get(`/artists/${encodeURIComponent(username)}`);
 const adminListSongs = () => get('/music/admin/songs');
-const adminTakeDownSong = (id, reason) => post(`/music/admin/songs/${encodeURIComponent(id)}/take-down`, { reason });
+const adminTakeDownSong = (id, reason) => post(`/music/admin/songs/${encodeURIComponent(id)}/takedown`, { reason });
 const adminRestoreSong = (id) => post(`/music/admin/songs/${encodeURIComponent(id)}/restore`);
+const adminBanUser = (id, reason) => post(`/music/admin/users/${encodeURIComponent(id)}/ban`, { reason });
 
 module.exports = {
   listSongs,
@@ -20,5 +21,6 @@ module.exports = {
   getArtist,
   adminListSongs,
   adminTakeDownSong,
-  adminRestoreSong
+  adminRestoreSong,
+  adminBanUser
 };
