@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read — Android App</title>
+  <link rel="stylesheet" href="auth.css?v=20260531-android-1" />
+  <style>
+    .download-wrap { min-height: calc(100vh - 90px); display:grid; place-items:center; padding:54px 0 78px; }
+    .phone-card { width:min(560px, 100%); border:1px solid var(--line); border-radius:34px; background:linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.035)); box-shadow:var(--shadow); overflow:hidden; position:relative; }
+    .phone-card::before { content:""; position:absolute; inset:-40%; background:conic-gradient(from 120deg, transparent, rgba(255,22,22,.22), transparent, rgba(12,140,255,.20), transparent); animation:downloadSpin 10s linear infinite; opacity:.65; }
+    @keyframes downloadSpin { to { transform:rotate(360deg); } }
+    .phone-inner { position:relative; z-index:1; margin:1px; border-radius:33px; background:rgba(5,5,7,.86); backdrop-filter:blur(18px); padding:26px; }
+    .app-mark { width:112px; height:112px; display:grid; place-items:center; border-radius:32px; background:rgba(255,255,255,.94); box-shadow:0 0 60px rgba(255,22,22,.22); margin-bottom:18px; }
+    .app-mark img { width:88%; height:88%; object-fit:contain; }
+    .phone-inner h1 { font-size:clamp(2.6rem, 12vw, 5.2rem); line-height:.84; letter-spacing:-.08em; text-transform:uppercase; }
+    .phone-inner p { color:var(--muted); line-height:1.65; margin-top:14px; }
+    .install-area { display:grid; gap:12px; margin-top:24px; }
+    .install-button { min-height:60px; font-size:1rem; }
+    .device-message { padding:16px; border:1px solid var(--line); border-radius:22px; background:rgba(0,0,0,.26); color:rgba(255,255,255,.78); line-height:1.55; }
+    .mobile-only, .desktop-only, .ios-only { display:none; }
+    body.is-android .mobile-only { display:grid; }
+    body.is-desktop .desktop-only { display:block; }
+    body.is-ios .ios-only { display:block; }
+    .steps { display:grid; gap:10px; margin-top:18px; }
+    .step { display:flex; gap:12px; align-items:flex-start; padding:13px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.055); }
+    .step strong { width:30px; height:30px; flex:0 0 auto; display:grid; place-items:center; border-radius:50%; background:linear-gradient(135deg, var(--red), var(--blue)); }
+    .small-muted { font-size:.9rem; color:var(--muted); }
+    .server-status { margin-top:14px; padding:13px 14px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.055); color:var(--muted); line-height:1.45; font-size:.94rem; }
+    .server-status.ready { color:#d8ffe3; border-color:rgba(44,255,110,.25); background:rgba(44,255,110,.07); }
+    .server-status.error { color:#ffd6d6; border-color:rgba(255,22,22,.35); background:rgba(255,22,22,.08); }
+    .install-button[disabled] { opacity:.55; cursor:not-allowed; filter:grayscale(.2); }
+    @media (max-width: 640px) { .download-wrap { padding-top:28px; align-items:start; } .phone-inner { padding:22px; } .nav { border-radius:26px; } }
+  </style>
+</head>
+<body class="is-desktop">
+  <div class="shell">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read</span></a>
+      <div class="nav-links">
+        <a href="music.html">Listen</a>
+        <a href="account.html">Account</a>
+      </div>
+    </nav>
+
+    <main class="download-wrap">
+      <section class="phone-card">
+        <div class="phone-inner">
+          <div class="app-mark"><img src="assets/no-read-logo.png" alt="No Read app icon"></div>
+          <p class="section-kicker">Android app</p>
+          <h1>No Read<br>Mobile</h1>
+          <p>Install the No Read app on your Android phone and listen from the app instead of the browser.</p>
+          <div id="serverStatus" class="server-status">Checking app version from the No Read server...</div>
+
+          <div class="install-area mobile-only">
+            <button id="downloadApkButton" class="install-button" type="button" disabled>Download Android App</button>
+            <div id="downloadMessage" class="device-message">The app download is checked directly from the No Read server before install.</div>
+          </div>
+
+          <div class="device-message desktop-only">
+            This page is for Android phones only. Open this same page from your phone to download the app.
+          </div>
+
+          <div class="device-message ios-only">
+            The No Read app is Android-only right now. Open this page on an Android phone to install it.
+          </div>
+
+          <div class="steps">
+            <div class="step"><strong>1</strong><span>Open this page on your Android phone.</span></div>
+            <div class="step"><strong>2</strong><span>Tap <b>Download Android App</b>.</span></div>
+            <div class="step"><strong>3</strong><span>Open the APK and confirm the install.</span></div>
+          </div>
+          <p class="small-muted">APK source: No Read server.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260531-android-1"></script>
+  <script>
+    const APK_PATH = '/app/noread.apk';
+    const VERSION_PATH = '/app/version';
+    const fallbackBase = 'https://api.rubby-studios.com';
+    const apiBase = window.NoReadAuth && typeof window.NoReadAuth.apiBaseUrl === 'function'
+      ? window.NoReadAuth.apiBaseUrl()
+      : fallbackBase;
+    const apkUrl = `${apiBase}${APK_PATH}`;
+    const versionUrl = `${apiBase}${VERSION_PATH}`;
+
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    document.body.classList.remove('is-desktop', 'is-android', 'is-ios');
+    document.body.classList.add(isAndroid ? 'is-android' : (isIOS ? 'is-ios' : 'is-desktop'));
+
+    const button = document.getElementById('downloadApkButton');
+    const message = document.getElementById('downloadMessage');
+    const statusBox = document.getElementById('serverStatus');
+
+    function setStatus(text, mode) {
+      if (!statusBox) return;
+      statusBox.textContent = text;
+      statusBox.classList.remove('ready', 'error');
+      if (mode) statusBox.classList.add(mode);
+    }
+
+    async function checkApkAvailability() {
+      try {
+        const response = await fetch(versionUrl, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data || data.success === false) {
+          throw new Error((data && data.message) || 'The app version endpoint is not ready yet.');
+        }
+
+        if (data.apkAvailable === false) {
+          if (button) button.disabled = true;
+          setStatus('Android app is not uploaded yet. Build the APK and place it on the server.', 'error');
+          if (message) message.textContent = 'The APK is not available yet. Try again after the No Read app build is uploaded.';
+          return;
+        }
+
+        if (button) button.disabled = !isAndroid;
+        const updated = data.updatedAt ? ` Updated: ${new Date(data.updatedAt).toLocaleString()}.` : '';
+        setStatus(`Android app is available from the No Read server.${updated}`, 'ready');
+        if (message && isAndroid) message.textContent = 'Tap download, then open the APK and confirm install.';
+      } catch (error) {
+        if (button) button.disabled = true;
+        setStatus('The No Read server could not confirm the Android app download yet.', 'error');
+        if (message) message.textContent = 'Try again after the server route /app/version and /app/noread.apk are online.';
+      }
+    }
+
+    if (button) {
+      button.addEventListener('click', () => {
+        if (button.disabled) return;
+        message.textContent = 'Starting download from the No Read server...';
+        window.location.href = apkUrl;
+        setTimeout(() => {
+          message.textContent = 'If Android blocks the install, open Settings when prompted and allow installs from this browser.';
+        }, 1200);
+      });
+    }
+
+    checkApkAvailability();
+  </script>
+</body>
+</html>
