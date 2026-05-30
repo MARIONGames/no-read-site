@@ -4,242 +4,427 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Listen</title>
-  <link rel="stylesheet" href="auth.css?v=20260525-2" />
+  <link rel="stylesheet" href="auth.css?v=20260530-2" />
 </head>
-<body>
-  <div class="shell">
-    <nav class="nav">
-      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
-      <div class="nav-links">
+<body class="listen-page">
+  <div class="listen-shell">
+    <aside class="listen-sidebar">
+      <a class="brand listen-brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read</span></a>
+      <nav class="listen-menu">
+        <a class="active" href="music.html">Listen</a>
         <a href="index.html">Home</a>
-        <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
-        <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
-        <a id="accountLink" href="login.html">Login</a>
-      </div>
-    </nav>
+        <a id="ownerPanelLink" href="owner-panel.html" style="display:none">Owner Panel</a>
+      </nav>
 
-    <main class="page-wrap">
-      <section class="page-title">
-        <h1>Listen</h1>
-        <p>No Read songs only. Everyone can listen. Upload is role locked. Every stream unlocks after the No Read ad gate.</p>
-      </section>
-
-      <section class="panel">
-        <div class="grid two">
-          <label>Search<input id="searchInput" placeholder="Search songs, artists, genres"></label>
-          <label>Genre<input id="genreInput" placeholder="trap, drill, freestyle..."></label>
+      <section class="sidebar-card playlist-card">
+        <div class="sidebar-title-row">
+          <strong>Playlists</strong>
+          <button id="newPlaylistButton" class="mini-icon-button" type="button" title="Create playlist">＋</button>
         </div>
-        <div style="height:14px"></div>
-        <button id="searchButton" type="button">Search No Read songs</button>
-        <p class="muted" style="margin-top:12px">Only active No Read songs are shown to listeners.</p>
-      </section>
-
-      <section class="grid three" id="songsGrid"></section>
-
-      <section class="panel admin-only" id="adminPanel">
-        <div class="page-title">
-          <h1 style="font-size:clamp(2rem,5vw,4rem)">Owner Panel</h1>
-          <p>Admin/owner only. Take down or restore songs, and ban accounts.</p>
+        <div id="playlistForm" class="playlist-form" style="display:none">
+          <input id="playlistNameInput" placeholder="Playlist name">
+          <button id="savePlaylistButton" type="button">Create</button>
         </div>
-        <div class="grid two">
-          <label>Ban user ID or username<input id="banUserId" placeholder="Account id or username"></label>
-          <label>Reason<input id="banReason" placeholder="Reason"></label>
-        </div>
-        <div style="height:12px"></div>
-        <button id="banButton" type="button" class="secondary">Ban account</button>
-        <div id="adminMessage" class="message"></div>
-        <div style="height:18px"></div>
-        <div class="table" id="adminSongs"></div>
+        <div id="playlistList" class="playlist-list"><p class="muted">No playlists yet.</p></div>
       </section>
+    </aside>
 
-      <section class="player-bar" id="playerBar">
-        <div class="player-meta">
-          <div>
-            <strong id="nowPlaying">Nothing playing</strong>
-            <p class="muted" id="nowArtist">Choose a song to start.</p>
+    <main class="listen-main">
+      <header class="listen-topbar music-topbar">
+        <div>
+          <p class="section-kicker">No Read Music</p>
+          <h1>Listen</h1>
+        </div>
+        <div class="top-search-wrap">
+          <label class="search-label" for="searchInput">Search</label>
+          <div class="top-search-box">
+            <input id="searchInput" placeholder="Songs, artists, lyrics...">
+            <button id="searchButton" type="button">Search</button>
           </div>
-          <span class="pill" id="adStatus">Ready</span>
         </div>
-        <div class="ad-box" id="adBox"></div>
-        <audio id="audioPlayer" controls preload="none"></audio>
+        <a id="accountLink" class="button secondary top-account" href="login.html">Login</a>
+      </header>
+
+      <section class="spotify-layout improved-listen-layout">
+        <div class="panel song-table-panel">
+          <div class="table-head">
+            <span>#</span><span>Title</span><span>Artist</span><span>Lyrics</span><span></span><span></span>
+          </div>
+          <div id="songsList" class="song-list"><p class="muted empty-list">Loading songs...</p></div>
+        </div>
+
+        <aside class="panel now-card compact-now-card">
+          <img id="nowCover" src="assets/no-read-logo.png" alt="Current song cover">
+          <div>
+            <h3 id="nowPlaying">Nothing playing</h3>
+            <p id="nowArtist" class="muted">No Read</p>
+          </div>
+          <div class="ad-box" id="adBox"></div>
+          <span class="pill" id="adStatus">Ready</span>
+        </aside>
       </section>
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-2"></script>
+  <section class="player-bar spotify-player compact-player" id="playerBar">
+    <div class="player-meta compact-player-meta">
+      <img id="bottomCover" class="bottom-cover" src="assets/no-read-logo.png" alt="Current song cover">
+      <div class="bottom-song-text">
+        <strong id="bottomNowPlaying">Nothing playing</strong>
+        <p class="muted" id="bottomNowArtist">No Read</p>
+      </div>
+      <span class="pill" id="bottomAdStatus">Ready</span>
+    </div>
+    <audio id="audioPlayer" controls preload="none"></audio>
+  </section>
+
+  <script src="auth-client.browser.js?v=20260530-2"></script>
   <script>
     const Auth = window.NoReadAuth;
-    const songsGrid = document.getElementById('songsGrid');
+    const songsList = document.getElementById('songsList');
     const player = document.getElementById('audioPlayer');
     const nowPlaying = document.getElementById('nowPlaying');
     const nowArtist = document.getElementById('nowArtist');
+    const bottomNowPlaying = document.getElementById('bottomNowPlaying');
+    const bottomNowArtist = document.getElementById('bottomNowArtist');
+    const nowCover = document.getElementById('nowCover');
+    const bottomCover = document.getElementById('bottomCover');
     const adBox = document.getElementById('adBox');
     const adStatus = document.getElementById('adStatus');
-    const adminPanel = document.getElementById('adminPanel');
-    const adminSongs = document.getElementById('adminSongs');
-    const adminMessage = document.getElementById('adminMessage');
+    const bottomAdStatus = document.getElementById('bottomAdStatus');
+    const searchInput = document.getElementById('searchInput');
+    const playlistList = document.getElementById('playlistList');
+    const playlistForm = document.getElementById('playlistForm');
+    const playlistNameInput = document.getElementById('playlistNameInput');
 
-    const apiUrl = (path) => /^https?:\/\//.test(path || '') ? path : `${Auth.apiBaseUrl()}${path || ''}`;
-    const roleAllowsAdmin = (user) => Auth.hasAnyRole(['admin', 'owner'], user);
+    const PLAYLISTS_KEY = 'NO_READ_LOCAL_PLAYLISTS_V1';
+    let allSongs = [];
+    let activePlaylistId = null;
+
+    const apiUrl = (path) => {
+      if (!path) return '';
+      if (/^https?:\/\//.test(path) || String(path).startsWith('data:') || String(path).startsWith('blob:')) return path;
+      return `${Auth.apiBaseUrl()}${String(path).startsWith('/') ? path : `/${path}`}`;
+    };
+
     const songIdOf = (song) => song?.id || song?._id || song?.songId;
+    const artistUsername = (song) => song?.artist?.username || song?.artistUsername || song?.uploaderUsername || song?.username || '';
+    const artistName = (song) => song?.artist?.displayName || song?.artist?.artistName || song?.artistName || song?.uploaderName || song?.displayName || 'No Read Artist';
+    const songCover = (song) => apiUrl(song?.coverImageUrl || song?.coverUrl || song?.coverPath || song?.imageUrl || song?.artworkUrl || 'assets/no-read-logo.png');
+    const lyricsOf = (song) => song?.lyrics || song?.description || '';
+    const directAudioOf = (song) => apiUrl(song?.audioUrl || song?.audioPath || song?.fileUrl || song?.streamUrl || song?.url || '');
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
     }
 
-    function songCover(song) {
-      return song.coverImageUrl || song.coverUrl || song.coverPath ? apiUrl(song.coverImageUrl || song.coverUrl || song.coverPath) : 'assets/no-read-logo.png';
+    function getPlaylists() {
+      try {
+        const value = JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || '[]');
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        return [];
+      }
     }
 
-    function artistUsername(song) { return song.artist?.username || song.artistUsername || song.uploaderUsername || song.username || ''; }
-    function artistName(song) { return song.artist?.artistName || song.artist?.displayName || song.artistName || song.uploaderName || 'No Read Artist'; }
+    function savePlaylists(playlists) {
+      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+    }
+
+    async function createPlaylist(name) {
+      const clean = String(name || '').trim();
+      if (!clean) return null;
+      let playlist = null;
+      try {
+        const payload = await Auth.createPlaylist({ name: clean });
+        playlist = payload.playlist || payload.data?.playlist || payload.data || null;
+      } catch (error) {
+        // Server playlist routes are optional for now; local playlists keep the UI usable.
+      }
+      if (!playlist || typeof playlist !== 'object') {
+        playlist = { id: `local_${Date.now()}`, name: clean, songs: [], local: true };
+      }
+      const playlists = getPlaylists();
+      playlists.push(playlist);
+      savePlaylists(playlists);
+      renderPlaylists();
+      return playlist;
+    }
+
+    async function addSongToPlaylist(song) {
+      const id = songIdOf(song);
+      if (!id) return;
+      let playlists = getPlaylists();
+      if (!playlists.length) {
+        const name = prompt('Create playlist name:');
+        if (!name) return;
+        await createPlaylist(name);
+        playlists = getPlaylists();
+      }
+
+      const names = playlists.map((p, index) => `${index + 1}. ${p.name}`).join('\n');
+      const choice = prompt(`Add to playlist:\n${names}\n\nType playlist number or a new playlist name:`);
+      if (!choice) return;
+
+      let playlist = null;
+      const number = Number(choice.trim());
+      if (Number.isInteger(number) && playlists[number - 1]) {
+        playlist = playlists[number - 1];
+      } else {
+        playlist = await createPlaylist(choice.trim());
+        playlists = getPlaylists();
+      }
+      if (!playlist) return;
+
+      try { await Auth.addSongToPlaylist(playlist.id, id); } catch (error) {}
+
+      const updated = playlists.map((p) => {
+        if (String(p.id) !== String(playlist.id)) return p;
+        const songs = Array.isArray(p.songs) ? p.songs : [];
+        if (!songs.some((saved) => String(songIdOf(saved)) === String(id))) songs.push(song);
+        return { ...p, songs };
+      });
+      savePlaylists(updated);
+      renderPlaylists();
+    }
+
+    function renderPlaylists() {
+      const playlists = getPlaylists();
+      if (!playlists.length) {
+        playlistList.innerHTML = '<p class="muted">No playlists yet.</p>';
+        return;
+      }
+      playlistList.innerHTML = playlists.map((playlist) => `
+        <button class="playlist-item ${String(activePlaylistId) === String(playlist.id) ? 'active' : ''}" type="button" data-playlist-id="${escapeHtml(playlist.id)}">
+          <span>${escapeHtml(playlist.name || 'Playlist')}</span>
+          <small>${(playlist.songs || []).length} songs</small>
+        </button>
+      `).join('') + '<button id="showAllSongsButton" class="playlist-item show-all" type="button">All songs</button>';
+
+      playlistList.querySelectorAll('[data-playlist-id]').forEach((button) => {
+        button.addEventListener('click', () => {
+          activePlaylistId = button.dataset.playlistId;
+          const playlist = getPlaylists().find((item) => String(item.id) === String(activePlaylistId));
+          renderSongs(Array.isArray(playlist?.songs) ? playlist.songs : []);
+          renderPlaylists();
+        });
+      });
+      document.getElementById('showAllSongsButton')?.addEventListener('click', () => {
+        activePlaylistId = null;
+        renderSongs(filterSongs(allSongs));
+        renderPlaylists();
+      });
+    }
+
+    function filterSongs(songs) {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) return songs;
+      return songs.filter((song) => {
+        return [song.title, artistName(song), artistUsername(song), lyricsOf(song)]
+          .some((value) => String(value || '').toLowerCase().includes(q));
+      });
+    }
 
     function renderSongs(songs) {
       if (!songs.length) {
-        songsGrid.innerHTML = '<article class="panel"><p class="muted">No songs are published yet.</p></article>';
+        songsList.innerHTML = '<p class="muted empty-list">No songs found.</p>';
         return;
       }
-      songsGrid.innerHTML = songs.map((song) => {
+      songsList.innerHTML = songs.map((song, index) => {
         const id = songIdOf(song);
         const username = artistUsername(song);
+        const lyrics = lyricsOf(song);
         return `
-          <article class="song-card">
-            <img class="song-cover" src="${escapeHtml(songCover(song))}" alt="${escapeHtml(song.title)} cover">
-            <div>
-              <h3>${escapeHtml(song.title || 'Untitled')}</h3>
-              <p>${escapeHtml(artistName(song))}</p>
-              <p class="muted">${escapeHtml(song.genre || 'No genre')} ${song.explicit ? '• Explicit' : ''}</p>
+          <article class="song-row improved-song-row" data-song-id="${escapeHtml(id)}">
+            <span class="song-index">${index + 1}</span>
+            <div class="song-title-cell">
+              <img src="${escapeHtml(songCover(song))}" alt="${escapeHtml(song.title || 'Song')} cover">
+              <div><strong>${escapeHtml(song.title || 'Untitled')}</strong><small>${song.explicit ? 'Explicit' : 'No Read'}</small></div>
             </div>
-            <div class="song-actions">
-              <button type="button" data-song-id="${escapeHtml(id)}">Play</button>
-              ${username ? `<a class="button secondary" href="artist.html?username=${encodeURIComponent(username)}">Artist</a>` : ''}
-            </div>
+            <div>${username ? `<a href="artist.html?username=${encodeURIComponent(username)}">${escapeHtml(artistName(song))}</a>` : escapeHtml(artistName(song))}</div>
+            <button class="lyrics-toggle secondary" type="button" data-lyrics="${escapeHtml(lyrics)}">Lyrics</button>
+            <button class="playlist-add-button secondary" type="button" data-add-song="${escapeHtml(id)}" title="Add to playlist">＋</button>
+            <button class="play-round" type="button" data-play-song="${escapeHtml(id)}">▶</button>
           </article>`;
       }).join('');
 
-      songsGrid.querySelectorAll('[data-song-id]').forEach((button) => {
-        button.addEventListener('click', () => playSong(button.dataset.songId));
+      songsList.querySelectorAll('[data-play-song]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          playSong(button.dataset.playSong, songs.find(s => String(songIdOf(s)) === String(button.dataset.playSong)) || null);
+        });
+      });
+      songsList.querySelectorAll('[data-add-song]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const song = songs.find(s => String(songIdOf(s)) === String(button.dataset.addSong));
+          if (song) addSongToPlaylist(song);
+        });
+      });
+      songsList.querySelectorAll('.song-row').forEach((row) => {
+        row.addEventListener('dblclick', () => {
+          const id = row.dataset.songId;
+          playSong(id, songs.find(s => String(songIdOf(s)) === String(id)) || null);
+        });
+      });
+      songsList.querySelectorAll('[data-lyrics]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const text = button.dataset.lyrics || 'No lyrics were added for this song.';
+          alert(text);
+        });
       });
     }
 
     async function loadSongs() {
-      songsGrid.innerHTML = '<article class="panel"><p class="muted">Loading No Read songs...</p></article>';
-      const q = document.getElementById('searchInput').value.trim();
-      const genre = document.getElementById('genreInput').value.trim();
-      const payload = await Auth.listSongs({ q, search: q, genre });
-      const songs = payload.data?.songs || payload.songs || payload.data || [];
-      renderSongs(Array.isArray(songs) ? songs : []);
+      songsList.innerHTML = '<p class="muted empty-list">Loading songs...</p>';
+      const q = searchInput.value.trim();
+      try {
+        const payload = await Auth.listSongs({ q, search: q });
+        const songs = payload.data?.songs || payload.songs || payload.data || [];
+        allSongs = Array.isArray(songs) ? songs : [];
+        activePlaylistId = null;
+        renderSongs(filterSongs(allSongs));
+        renderPlaylists();
+      } catch (error) {
+        songsList.innerHTML = `<p class="muted empty-list">${escapeHtml(error.message || 'Could not load songs.')}</p>`;
+      }
     }
 
-    async function playSong(songId) {
+    function setNowPlaying(song) {
+      const title = song?.title || 'Nothing playing';
+      const artist = song ? artistName(song) : 'No Read';
+      const cover = song ? songCover(song) : 'assets/no-read-logo.png';
+      nowPlaying.textContent = title;
+      bottomNowPlaying.textContent = title;
+      nowArtist.textContent = artist;
+      bottomNowArtist.textContent = artist;
+      nowCover.src = cover;
+      bottomCover.src = cover;
+    }
+
+    async function unlockWithAd(songId, knownSong, payload) {
+      const data = payload.data || payload;
+      const song = data.song || knownSong || { id: songId, title: data.title || 'No Read song' };
+      const streamNow = data.streamUrl || data.url || data.audioUrl;
+      setNowPlaying(song);
+
+      if (streamNow) {
+        player.src = apiUrl(streamNow);
+        adBox.classList.remove('show');
+        adStatus.textContent = 'Playing';
+        bottomAdStatus.textContent = 'Playing';
+        await player.play().catch(() => {});
+        return;
+      }
+
+      const ad = data.ad || { durationSeconds: data.adSeconds || 5, title: 'No Read' };
+      const sessionId = data.playSessionId || data.sessionId || data.id;
+      if (!sessionId) throw new Error('The server did not return a play session id.');
+
+      let remaining = Math.max(1, Number(ad.durationSeconds || ad.seconds || 5));
+      adBox.classList.add('show');
+      adStatus.textContent = 'Ad';
+      bottomAdStatus.textContent = 'Ad';
+      adBox.innerHTML = `<strong>${escapeHtml(ad.title || 'No Read')}</strong><p>${escapeHtml(ad.message || 'Unlocking audio...')}</p><p><span id="countdown">${remaining}</span>s</p>`;
+
+      const timer = setInterval(async () => {
+        remaining -= 1;
+        const counter = document.getElementById('countdown');
+        if (counter) counter.textContent = Math.max(remaining, 0);
+        if (remaining <= 0) {
+          clearInterval(timer);
+          adStatus.textContent = 'Unlocking';
+          bottomAdStatus.textContent = 'Unlocking';
+          try {
+            const donePayload = await Auth.completeSongAd(sessionId);
+            const done = donePayload.data || donePayload;
+            const streamUrl = done.streamUrl || done.url || done.audioUrl || Auth.getStreamUrl(songId, sessionId);
+            player.src = apiUrl(streamUrl);
+            adBox.classList.remove('show');
+            adStatus.textContent = 'Playing';
+            bottomAdStatus.textContent = 'Playing';
+            await player.play().catch(() => {});
+          } catch (error) {
+            adStatus.textContent = 'Error';
+            bottomAdStatus.textContent = 'Error';
+            adBox.textContent = error.message || 'Could not unlock this song.';
+          }
+        }
+      }, 1000);
+    }
+
+    async function playSong(songId, knownSong) {
+      const direct = directAudioOf(knownSong);
       try {
         player.pause();
         player.removeAttribute('src');
         player.load();
+        setNowPlaying(knownSong || { title: 'Loading...', coverUrl: 'assets/no-read-logo.png' });
         adBox.classList.add('show');
-        adStatus.textContent = 'Ad required';
-        adBox.textContent = 'Loading ad...';
+        adStatus.textContent = 'Loading';
+        bottomAdStatus.textContent = 'Loading';
+        adBox.textContent = 'Preparing audio...';
 
         const payload = await Auth.startSongPlay(songId);
-        const data = payload.data || payload;
-        const song = data.song || { id: songId, title: data.title || 'No Read song' };
-        const ad = data.ad || { durationSeconds: data.adSeconds || 5, title: 'No Read ad' };
-        const sessionId = data.playSessionId || data.sessionId || data.id;
-        if (!sessionId) throw new Error('The server did not return a play session id.');
-
-        nowPlaying.textContent = song.title || 'No Read song';
-        nowArtist.textContent = song.artist?.artistName || song.artist?.displayName || song.artistName || 'No Read Artist';
-
-        let remaining = Math.max(1, Number(ad.durationSeconds || ad.seconds || 5));
-        adBox.innerHTML = `<strong>${escapeHtml(ad.title || 'No Read ad')}</strong><p>${escapeHtml(ad.message || 'The song unlocks after this ad.')}</p><p>Unlocking in <span id="countdown">${remaining}</span>s</p>`;
-
-        const timer = setInterval(async () => {
-          remaining -= 1;
-          const counter = document.getElementById('countdown');
-          if (counter) counter.textContent = Math.max(remaining, 0);
-          if (remaining <= 0) {
-            clearInterval(timer);
-            adStatus.textContent = 'Unlocking';
-            try {
-              const donePayload = await Auth.completeSongAd(sessionId);
-              const done = donePayload.data || donePayload;
-              const streamUrl = done.streamUrl || done.url || done.audioUrl || Auth.getStreamUrl(songId, sessionId);
-              player.src = apiUrl(streamUrl);
-              adBox.classList.remove('show');
-              adStatus.textContent = 'Playing unlocked';
-              await player.play().catch(() => {});
-            } catch (error) {
-              adStatus.textContent = 'Ad failed';
-              adBox.textContent = error.message || 'Could not unlock this song.';
-            }
-          }
-        }, 1000);
+        await unlockWithAd(songId, knownSong, payload);
       } catch (error) {
-        adBox.classList.add('show');
-        adBox.textContent = error.message || 'Could not play this song.';
+        if (direct) {
+          setNowPlaying(knownSong);
+          player.src = direct;
+          adBox.classList.remove('show');
+          adStatus.textContent = 'Playing';
+          bottomAdStatus.textContent = 'Playing';
+          await player.play().catch(() => {});
+          return;
+        }
         adStatus.textContent = 'Error';
+        bottomAdStatus.textContent = 'Error';
+        adBox.classList.add('show');
+        adBox.textContent = error.message || 'Could not start this song.';
       }
     }
 
-    async function loadAdminPanel(user) {
-      if (!roleAllowsAdmin(user)) return;
-      adminPanel.classList.add('show');
-      const payload = await Auth.adminListSongs();
-      const songs = payload.data?.songs || payload.songs || payload.data || [];
-      adminSongs.innerHTML = Array.isArray(songs) && songs.length ? songs.map((song) => {
-        const id = songIdOf(song);
-        return `
-          <div class="table-row">
-            <strong>${escapeHtml(song.title || 'Untitled')}</strong>
-            <span class="muted">${escapeHtml(artistName(song))}</span>
-            <span class="pill">${escapeHtml(song.status || 'active')}</span>
-            <div class="song-actions">
-              <button type="button" class="secondary" data-takedown="${escapeHtml(id)}">Take down</button>
-              <button type="button" class="secondary" data-restore="${escapeHtml(id)}">Restore</button>
-            </div>
-          </div>`;
-      }).join('') : '<p class="muted">No songs yet.</p>';
-
-      adminSongs.querySelectorAll('[data-takedown]').forEach((button) => button.addEventListener('click', () => takeDownSong(button.dataset.takedown)));
-      adminSongs.querySelectorAll('[data-restore]').forEach((button) => button.addEventListener('click', () => restoreSong(button.dataset.restore)));
-    }
-
-    async function takeDownSong(id) {
-      const reason = prompt('Reason for taking this song down?') || 'Taken down by admin';
-      await Auth.adminTakeDownSong(id, reason);
-      const state = await Auth.getSessionState({ verify: false });
-      await loadAdminPanel(state.user || Auth.getSavedUser() || {});
-      await loadSongs();
-    }
-
-    async function restoreSong(id) {
-      await Auth.adminRestoreSong(id);
-      const state = await Auth.getSessionState({ verify: false });
-      await loadAdminPanel(state.user || Auth.getSavedUser() || {});
-      await loadSongs();
-    }
-
-    document.getElementById('banButton').addEventListener('click', async () => {
-      adminMessage.className = 'message';
-      const id = document.getElementById('banUserId').value.trim();
-      const reason = document.getElementById('banReason').value.trim() || 'Banned from owner panel';
-      if (!id) return alert('Type a user ID or username first.');
-      await Auth.adminBanUser(id, reason);
-      adminMessage.className = 'message show success';
-      adminMessage.textContent = 'Account banned.';
+    document.getElementById('searchButton').addEventListener('click', () => {
+      activePlaylistId = null;
+      loadSongs();
+    });
+    searchInput.addEventListener('input', () => {
+      if (activePlaylistId) {
+        const playlist = getPlaylists().find((item) => String(item.id) === String(activePlaylistId));
+        renderSongs(filterSongs(Array.isArray(playlist?.songs) ? playlist.songs : []));
+      } else {
+        renderSongs(filterSongs(allSongs));
+      }
+    });
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') loadSongs();
     });
 
-    document.getElementById('searchButton').addEventListener('click', loadSongs);
+    document.getElementById('newPlaylistButton').addEventListener('click', () => {
+      playlistForm.style.display = playlistForm.style.display === 'none' ? 'grid' : 'none';
+      playlistNameInput.focus();
+    });
+    document.getElementById('savePlaylistButton').addEventListener('click', async () => {
+      const playlist = await createPlaylist(playlistNameInput.value);
+      if (playlist) {
+        playlistNameInput.value = '';
+        playlistForm.style.display = 'none';
+      }
+    });
 
     (async () => {
       const state = await Auth.getSessionState({ verify: true });
       if (state.loggedIn) {
         document.getElementById('accountLink').textContent = Auth.getDisplayName();
         document.getElementById('accountLink').href = 'account.html';
-        await loadAdminPanel(state.user || Auth.getSavedUser() || {}).catch(() => {});
+        if (Auth.hasAnyRole(['admin', 'owner'], state.user || Auth.getSavedUser())) {
+          document.getElementById('ownerPanelLink').style.display = 'block';
+        }
       }
+      renderPlaylists();
       await loadSongs();
     })();
   </script>

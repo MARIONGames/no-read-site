@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Upload</title>
-  <link rel="stylesheet" href="auth.css?v=20260525-2" />
+  <link rel="stylesheet" href="auth.css?v=20260530-1" />
 </head>
 <body>
   <div class="shell">
@@ -15,7 +15,7 @@
         <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
-        <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a id="ownerPanelLink" href="owner-panel.html" style="display:none">Owner Panel</a>
         <a id="accountLink" href="login.html">Login</a>
       </div>
     </nav>
@@ -23,100 +23,89 @@
     <main class="page-wrap">
       <section class="page-title">
         <h1>Upload</h1>
-        <p>Only approved No Read roles can upload: artist, staff, moderator, admin, or owner. Uploaded songs automatically create/update the artist page for the uploader.</p>
+        <p>Only approved No Read roles can upload: artist, staff, moderator, admin, or owner. Uploaded songs automatically appear on the uploader's artist page.</p>
       </section>
-
-      <section class="panel" id="accessBox"><p class="muted">Checking access...</p></section>
-
+      <section class="panel" id="accessBox"><p class="muted">Checking upload access...</p></section>
       <section class="panel" id="uploadPanel" style="display:none">
         <form id="uploadForm">
+          <label>Song title<input id="title" maxlength="120" required placeholder="Song title"></label>
+          <label>Lyrics<textarea id="lyrics" maxlength="5000" placeholder="Paste the lyrics here. This replaces the old description field."></textarea></label>
           <div class="grid two">
-            <label>Song title<input id="title" required maxlength="120" placeholder="Song name"></label>
-            <label>Genre<input id="genre" maxlength="50" placeholder="Greek trap"></label>
+            <label>Audio file<input id="audioFile" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" required></label>
+            <label>Cover image<input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
           </div>
-          <label>Description<textarea id="description" maxlength="1200" placeholder="Short info about the song"></textarea></label>
-          <div class="grid two">
-            <label>Audio file<input id="audioFile" type="file" accept="audio/*"></label>
-            <label>Or audio URL<input id="audioUrl" placeholder="https://...mp3"></label>
-          </div>
-          <div class="grid two">
-            <label>Cover image<input id="coverFile" type="file" accept="image/*"></label>
-            <label>Song banner image<input id="bannerFile" type="file" accept="image/*"></label>
-          </div>
-          <label><span><input id="explicit" type="checkbox" style="width:auto;min-height:auto"> Explicit</span></label>
+          <p class="muted size-hint">Audio: MP3 or WAV, max 50 MB. Cover recommended: 3000×3000 square, PNG/JPG/WEBP.</p>
+          <label class="check-row"><input id="explicit" type="checkbox"> Explicit lyrics</label>
           <button id="uploadButton" type="submit">Upload No Read song</button>
         </form>
+        <div class="upload-progress" id="uploadProgress" style="display:none;margin-top:16px">
+          <div style="height:12px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.1)"><div id="uploadProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#ff1616,#0c8cff);transition:width .15s ease"></div></div>
+          <p id="uploadProgressText" class="muted" style="margin-top:8px">0%</p>
+        </div>
         <div id="message" class="message"></div>
       </section>
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-2"></script>
+  <script src="auth-client.browser.js?v=20260530-1"></script>
   <script>
     const Auth = window.NoReadAuth;
     const uploadRoles = ['artist', 'staff', 'moderator', 'admin', 'owner'];
     const accessBox = document.getElementById('accessBox');
     const uploadPanel = document.getElementById('uploadPanel');
     const msg = document.getElementById('message');
-
     function showMessage(text, type = 'error') { msg.className = `message show ${type}`; msg.textContent = text; }
-
     function buildUploadBody() {
-      const audioFile = document.getElementById('audioFile').files[0];
-      const coverFile = document.getElementById('coverFile').files[0];
-      const bannerFile = document.getElementById('bannerFile').files[0];
       const form = new FormData();
       form.append('title', document.getElementById('title').value.trim());
-      form.append('genre', document.getElementById('genre').value.trim());
-      form.append('description', document.getElementById('description').value.trim());
-      form.append('audioUrl', document.getElementById('audioUrl').value.trim());
+      form.append('description', document.getElementById('lyrics').value.trim());
       form.append('explicit', document.getElementById('explicit').checked ? 'true' : 'false');
-      if (audioFile) { form.append('audioFile', audioFile); form.append('audio', audioFile); }
-      if (coverFile) { form.append('coverFile', coverFile); form.append('cover', coverFile); }
-      if (bannerFile) { form.append('bannerFile', bannerFile); form.append('banner', bannerFile); }
+      const audio = document.getElementById('audioFile').files[0];
+      const cover = document.getElementById('coverFile').files[0];
+      if (audio) form.append('audio', audio);
+      if (cover) form.append('cover', cover);
       return form;
     }
-
+    function setUploadProgress(percent, loaded, total) {
+      const box = document.getElementById('uploadProgress');
+      const bar = document.getElementById('uploadProgressBar');
+      const text = document.getElementById('uploadProgressText');
+      box.style.display = 'block';
+      bar.style.width = `${percent}%`;
+      const mbLoaded = loaded ? (loaded / 1024 / 1024).toFixed(1) : '0.0';
+      const mbTotal = total ? (total / 1024 / 1024).toFixed(1) : '0.0';
+      text.textContent = total ? `${percent}% — ${mbLoaded} MB / ${mbTotal} MB` : `${percent}%`;
+    }
     document.getElementById('uploadForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = document.getElementById('uploadButton');
       button.disabled = true;
       button.textContent = 'Uploading...';
-      showMessage('Uploading. Large files can take a moment.', 'success');
+      showMessage('Uploading. Use MP3 or WAV files under 50 MB.', 'success');
       try {
-        if (!document.getElementById('audioFile').files[0] && !document.getElementById('audioUrl').value.trim()) {
-          throw new Error('Choose an audio file or paste an audio URL.');
-        }
-        const result = await Auth.uploadSong(buildUploadBody());
+        if (!document.getElementById('audioFile').files[0]) throw new Error('Choose an MP3 or WAV audio file.');
+        setUploadProgress(0, 0, 0);
+        const result = await Auth.uploadSong(buildUploadBody(), { timeoutMs: 5 * 60 * 1000, onProgress: setUploadProgress });
+        setUploadProgress(100, 1, 1);
         const song = result.data?.song || result.song || result.data || {};
         const user = Auth.getSavedUser() || {};
         const username = song.artist?.username || song.artistUsername || user.username;
-        showMessage(`Uploaded: ${song.title || document.getElementById('title').value.trim()}`, 'success');
         event.target.reset();
-        if (username) {
-          msg.innerHTML = `Uploaded. <a href="artist.html?username=${encodeURIComponent(username)}">Open artist page</a> or <a href="music.html">listen page</a>.`;
-        }
-      } catch (error) {
-        showMessage(error.message || 'Upload failed.');
-      } finally {
-        button.disabled = false;
-        button.textContent = 'Upload No Read song';
-      }
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('uploadProgressBar').style.width = '0%';
+        msg.className = 'message show success';
+        msg.innerHTML = `Uploaded. ${username ? `<a href="artist.html?username=${encodeURIComponent(username)}">Open artist page</a> or ` : ''}<a href="music.html">listen page</a>.`;
+      } catch (error) { showMessage(error.message || 'Upload failed.'); }
+      finally { button.disabled = false; button.textContent = 'Upload No Read song'; }
     });
-
     (async () => {
       const state = await Auth.getSessionState({ verify: true });
-      if (!state.loggedIn) {
-        accessBox.innerHTML = '<p class="muted">You must login before uploading.</p><p style="margin-top:12px"><a class="button" href="login.html">Login</a></p>';
-        return;
-      }
+      if (!state.loggedIn) { accessBox.innerHTML = '<p class="muted">You must login before uploading.</p><p style="margin-top:12px"><a class="button" href="login.html">Login</a></p>'; return; }
       document.getElementById('accountLink').textContent = Auth.getDisplayName();
       document.getElementById('accountLink').href = 'account.html';
       const roles = Auth.getRoleList(state.user || Auth.getSavedUser());
-      if (!roles.some((role) => uploadRoles.includes(role))) {
-        accessBox.innerHTML = `<p class="muted">Your role is <strong>${roles.join(', ') || 'user'}</strong>. Upload access is only for artist/staff/moderator/admin/owner.</p>`;
-        return;
-      }
+      if (Auth.hasAnyRole(['admin','owner'], state.user || Auth.getSavedUser())) document.getElementById('ownerPanelLink').style.display = 'inline-flex';
+      if (!roles.some(role => uploadRoles.includes(role))) { accessBox.innerHTML = `<p class="muted">Your role is <strong>${roles.join(', ') || 'user'}</strong>. Upload access is only for artist/staff/moderator/admin/owner.</p>`; return; }
       accessBox.style.display = 'none';
       uploadPanel.style.display = 'block';
     })();

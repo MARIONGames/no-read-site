@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Artist</title>
-  <link rel="stylesheet" href="auth.css?v=20260525-2" />
+  <link rel="stylesheet" href="auth.css?v=20260530-1" />
 </head>
 <body>
   <div class="shell">
@@ -19,34 +19,34 @@
         <a id="accountLink" href="login.html">Login</a>
       </div>
     </nav>
-
     <main class="page-wrap">
       <section id="artistHeader" class="panel"><p class="muted">Loading artist...</p></section>
-      <section class="page-title"><h1>Songs</h1><p>All published No Read songs from this artist profile. The list is generated from uploads automatically.</p></section>
+      <section class="page-title"><h1>Songs</h1><p>All published No Read songs from this artist. The artist page is generated automatically from the account profile and uploads.</p></section>
       <section class="grid three" id="songsGrid"></section>
     </main>
   </div>
-
-  <script src="auth-client.browser.js?v=20260525-2"></script>
+  <script src="auth-client.browser.js?v=20260530-1"></script>
   <script>
     const Auth = window.NoReadAuth;
     const artistHeader = document.getElementById('artistHeader');
     const songsGrid = document.getElementById('songsGrid');
-    const apiUrl = (path) => /^https?:\/\//.test(path || '') ? path : `${Auth.apiBaseUrl()}${path || ''}`;
+    const apiUrl = (path) => /^https?:\/\//.test(path || '') || String(path || '').startsWith('data:') ? path : `${Auth.apiBaseUrl()}${path || ''}`;
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
     function params() { return new URLSearchParams(location.search); }
     function cover(song) { return song.coverImageUrl || song.coverUrl || song.coverPath ? apiUrl(song.coverImageUrl || song.coverUrl || song.coverPath) : 'assets/no-read-logo.png'; }
     function renderArtist(artist) {
-      const banner = artist.artistBanner || artist.artistBannerUrl || artist.bannerImage || artist.bannerUrl;
-      const avatar = artist.artistImage || artist.artistImageUrl || artist.profileImage || artist.profileImageUrl || artist.avatarUrl || 'assets/no-read-logo.png';
+      const banner = artist.bannerImage || artist.bannerUrl || artist.artistBanner || artist.artistBannerUrl;
+      const avatar = artist.profileImage || artist.avatarUrl || artist.artistImage || artist.artistImageUrl || 'assets/no-read-logo.png';
+      const name = artist.displayName || artist.artistName || artist.username || 'No Read Artist';
+      const bio = artist.bio || artist.artistBio || '';
       artistHeader.innerHTML = `
         <div class="banner">${banner ? `<img src="${escapeHtml(apiUrl(banner))}" alt="artist banner">` : ''}</div>
         <div class="profile-head">
           <img src="${escapeHtml(apiUrl(avatar))}" alt="artist avatar">
           <div>
-            <h1 style="font-size:clamp(2.2rem,6vw,5rem);line-height:.88;letter-spacing:-.07em;text-transform:uppercase">${escapeHtml(artist.artistName || artist.displayName || artist.username || 'No Read Artist')}</h1>
+            <h1 style="font-size:clamp(2.2rem,6vw,5rem);line-height:.88;letter-spacing:-.07em;text-transform:uppercase">${escapeHtml(name)}</h1>
             <p class="muted">@${escapeHtml(artist.username || artist.handle || '')}</p>
-            <p style="margin-top:10px" class="muted">${escapeHtml(artist.artistBio || artist.bio || '')}</p>
+            <p style="margin-top:10px" class="muted">${escapeHtml(bio)}</p>
           </div>
         </div>`;
     }
@@ -54,10 +54,9 @@
       songsGrid.innerHTML = songs.length ? songs.map(song => `
         <article class="song-card">
           <img class="song-cover" src="${escapeHtml(cover(song))}" alt="${escapeHtml(song.title)} cover">
-          <div><h3>${escapeHtml(song.title || 'Untitled')}</h3><p class="muted">${escapeHtml(song.genre || 'No genre')}</p></div>
+          <div><h3>${escapeHtml(song.title || 'Untitled')}</h3><p class="muted">${escapeHtml(song.description || song.lyrics || '')}</p></div>
           <div class="song-actions"><a class="button" href="music.html">Play in listener</a></div>
-        </article>
-      `).join('') : '<article class="panel"><p class="muted">This artist has no published songs yet.</p></article>';
+        </article>`).join('') : '<article class="panel"><p class="muted">No published songs yet.</p></article>';
     }
     (async () => {
       const state = await Auth.getSessionState({ verify: true });
@@ -71,10 +70,7 @@
         const songs = data.songs || data.artist?.songs || [];
         renderArtist(artist);
         renderSongs(Array.isArray(songs) ? songs : []);
-      } catch (error) {
-        artistHeader.innerHTML = `<p class="muted">${escapeHtml(error.message || 'Artist not found')}</p>`;
-        songsGrid.innerHTML = '';
-      }
+      } catch (error) { artistHeader.innerHTML = `<p class="muted">${escapeHtml(error.message || 'Artist not found')}</p>`; songsGrid.innerHTML = ''; }
     })();
   </script>
 </body>

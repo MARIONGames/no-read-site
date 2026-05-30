@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>No Read — Settings</title>
-  <link rel="stylesheet" href="auth.css?v=20260525-2" />
+  <link rel="stylesheet" href="auth.css?v=20260530-1" />
 </head>
 <body>
   <div class="shell">
@@ -15,37 +15,46 @@
         <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
-        <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a id="ownerPanelLink" href="owner-panel.html" style="display:none">Owner Panel</a>
         <a id="accountLink" href="login.html">Login</a>
       </div>
     </nav>
 
     <main class="page-wrap">
-      <section class="page-title"><h1>Settings</h1><p>Change your account profile. If you are an artist, these details also appear on your artist page and your uploaded songs list automatically.</p></section>
+      <section class="page-title"><h1>Settings</h1><p>Edit your main profile. If your role is artist/staff/admin/owner, your artist page is created automatically using this same profile name, image, banner, and bio.</p></section>
       <section class="panel" id="settingsPanel">
         <form id="settingsForm">
           <div class="grid two">
-            <label>Display name<input id="displayName" maxlength="32"></label>
-            <label>Artist name<input id="artistName" maxlength="80"></label>
+            <label>Display name<input id="displayName" maxlength="32" placeholder="No Read name"></label>
+            <label>Username<input id="usernameReadonly" disabled></label>
           </div>
-          <label>Bio<textarea id="bio" maxlength="500"></textarea></label>
-          <label>Artist bio<textarea id="artistBio" maxlength="1200"></textarea></label>
-          <div class="grid two">
-            <label>Profile image URL<input id="profileImage" placeholder="https://... or upload file below"></label>
-            <label>Profile image file<input id="profileImageFile" type="file" accept="image/*"></label>
+          <label>Bio / artist bio<textarea id="bio" maxlength="500" placeholder="Write your profile bio. This also appears on your artist page if you are an artist."></textarea></label>
+
+          <div class="media-editor-grid">
+            <div>
+              <label>Profile image file<input id="profileImageFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <p class="muted size-hint">Recommended: square image, 512×512 or bigger. After choosing a file, drag/zoom to select the area shown in your profile image.</p>
+              <div id="cropper" class="cropper" style="display:none">
+                <canvas id="cropCanvas" width="320" height="320"></canvas>
+                <label>Zoom<input id="zoomRange" type="range" min="1" max="3" step="0.01" value="1"></label>
+                <p class="muted">Drag inside the square to move the image.</p>
+              </div>
+            </div>
+            <div>
+              <label>Banner file<input id="bannerImageFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+              <p class="muted size-hint">Recommended banner: 1500×500 or 3000×1000. Wide images look best.</p>
+              <div class="banner-preview" id="bannerPreview"><span>No banner selected</span></div>
+            </div>
           </div>
-          <div class="grid two">
-            <label>Banner URL<input id="bannerImage" placeholder="https://... or upload file below"></label>
-            <label>Banner file<input id="bannerImageFile" type="file" accept="image/*"></label>
-          </div>
-          <div class="grid two">
-            <label>Artist image URL<input id="artistImage" placeholder="https://... or upload file below"></label>
-            <label>Artist image file<input id="artistImageFile" type="file" accept="image/*"></label>
-          </div>
-          <div class="grid two">
-            <label>Artist banner URL<input id="artistBanner" placeholder="https://... or upload file below"></label>
-            <label>Artist banner file<input id="artistBannerFile" type="file" accept="image/*"></label>
-          </div>
+
+          <details class="url-details">
+            <summary>Use image URLs instead</summary>
+            <div class="grid two" style="margin-top:12px">
+              <label>Profile image URL<input id="profileImageUrl" placeholder="https://..."></label>
+              <label>Banner URL<input id="bannerImageUrl" placeholder="https://..."></label>
+            </div>
+          </details>
+
           <button id="saveButton" type="submit">Save profile</button>
         </form>
         <div id="message" class="message"></div>
@@ -53,64 +62,102 @@
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-2"></script>
+  <script src="auth-client.browser.js?v=20260530-1"></script>
   <script>
     const Auth = window.NoReadAuth;
     const msg = document.getElementById('message');
+    const cropper = document.getElementById('cropper');
+    const canvas = document.getElementById('cropCanvas');
+    const ctx = canvas.getContext('2d');
+    const zoomRange = document.getElementById('zoomRange');
+    const bannerPreview = document.getElementById('bannerPreview');
+    let cropImage = null;
+    let cropScale = 1;
+    let cropX = 0;
+    let cropY = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let bannerDataUrl = '';
+
     function showMessage(text, type = 'error') { msg.className = `message show ${type}`; msg.textContent = text; }
-    const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-      if (!file) return resolve('');
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Could not read file'));
-      reader.readAsDataURL(file);
-    });
     function setValue(id, value) { document.getElementById(id).value = value || ''; }
     function first(...values) { return values.find((value) => value !== undefined && value !== null && value !== '') || ''; }
+    function fileToDataUrl(file) { return new Promise((resolve, reject) => { if (!file) return resolve(''); const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '')); reader.onerror = () => reject(new Error('Could not read image file.')); reader.readAsDataURL(file); }); }
+    function apiUrl(path) { return /^https?:\/\//.test(path || '') || String(path || '').startsWith('data:') ? path : `${Auth.apiBaseUrl()}${path || ''}`; }
+
+    function drawCrop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!cropImage) return;
+      const base = Math.max(canvas.width / cropImage.width, canvas.height / cropImage.height);
+      const scale = base * cropScale;
+      const w = cropImage.width * scale;
+      const h = cropImage.height * scale;
+      ctx.drawImage(cropImage, cropX + (canvas.width - w) / 2, cropY + (canvas.height - h) / 2, w, h);
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+    }
+    async function loadCropImage(file) {
+      const data = await fileToDataUrl(file);
+      if (!data) return;
+      cropImage = new Image();
+      cropImage.onload = () => { cropX = 0; cropY = 0; cropScale = 1; zoomRange.value = '1'; cropper.style.display = 'grid'; drawCrop(); };
+      cropImage.src = data;
+    }
+    canvas.addEventListener('pointerdown', (event) => { dragging = true; lastX = event.clientX; lastY = event.clientY; canvas.setPointerCapture(event.pointerId); });
+    canvas.addEventListener('pointermove', (event) => { if (!dragging) return; cropX += event.clientX - lastX; cropY += event.clientY - lastY; lastX = event.clientX; lastY = event.clientY; drawCrop(); });
+    canvas.addEventListener('pointerup', () => { dragging = false; });
+    zoomRange.addEventListener('input', () => { cropScale = Number(zoomRange.value || 1); drawCrop(); });
+    document.getElementById('profileImageFile').addEventListener('change', (event) => loadCropImage(event.target.files[0]).catch(error => showMessage(error.message)));
+    document.getElementById('bannerImageFile').addEventListener('change', async (event) => {
+      bannerDataUrl = await fileToDataUrl(event.target.files[0]);
+      if (bannerDataUrl) bannerPreview.innerHTML = `<img src="${bannerDataUrl}" alt="banner preview">`;
+      else bannerPreview.innerHTML = '<span>No banner selected</span>';
+    });
+
+    function croppedProfileDataUrl() {
+      if (!cropImage) return '';
+      const output = document.createElement('canvas');
+      output.width = 512; output.height = 512;
+      const out = output.getContext('2d');
+      out.drawImage(canvas, 0, 0, 512, 512);
+      return output.toDataURL('image/webp', 0.86);
+    }
+
     async function fillProfile() {
       const payload = await Auth.getMyUserProfile();
       const data = payload.data || payload;
       const user = data.user || data.profile || Auth.getSavedUser() || {};
       setValue('displayName', first(user.displayName, user.name));
-      setValue('artistName', user.artistName);
-      setValue('bio', user.bio);
-      setValue('artistBio', user.artistBio);
-      setValue('profileImage', first(user.profileImage, user.profileImageUrl, user.avatarUrl));
-      setValue('bannerImage', first(user.bannerImage, user.bannerImageUrl, user.bannerUrl));
-      setValue('artistImage', first(user.artistImage, user.artistImageUrl));
-      setValue('artistBanner', first(user.artistBanner, user.artistBannerUrl));
+      setValue('usernameReadonly', user.username || '');
+      setValue('bio', first(user.bio, user.artistBio));
+      setValue('profileImageUrl', first(user.profileImage, user.avatarUrl));
+      setValue('bannerImageUrl', first(user.bannerImage, user.bannerUrl));
+      const banner = first(user.bannerImage, user.bannerUrl);
+      if (banner) bannerPreview.innerHTML = `<img src="${apiUrl(banner)}" alt="current banner">`;
       Auth.saveUser(user);
     }
+
     document.getElementById('settingsForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const button = document.getElementById('saveButton');
       button.disabled = true;
       button.textContent = 'Saving...';
       try {
-        const profileImageFile = await fileToDataUrl(document.getElementById('profileImageFile').files[0]);
-        const bannerImageFile = await fileToDataUrl(document.getElementById('bannerImageFile').files[0]);
-        const artistImageFile = await fileToDataUrl(document.getElementById('artistImageFile').files[0]);
-        const artistBannerFile = await fileToDataUrl(document.getElementById('artistBannerFile').files[0]);
-        const profileImage = profileImageFile || document.getElementById('profileImage').value.trim();
-        const bannerImage = bannerImageFile || document.getElementById('bannerImage').value.trim();
-        const artistImage = artistImageFile || document.getElementById('artistImage').value.trim();
-        const artistBanner = artistBannerFile || document.getElementById('artistBanner').value.trim();
-        const payload = {
-          displayName: document.getElementById('displayName').value.trim(),
-          name: document.getElementById('displayName').value.trim(),
-          artistName: document.getElementById('artistName').value.trim(),
-          bio: document.getElementById('bio').value,
-          artistBio: document.getElementById('artistBio').value,
-          profileImage, profileImageUrl: profileImage, avatarUrl: profileImage,
-          bannerImage, bannerImageUrl: bannerImage, bannerUrl: bannerImage,
-          artistImage, artistImageUrl: artistImage,
-          artistBanner, artistBannerUrl: artistBanner
-        };
+        const displayName = document.getElementById('displayName').value.trim();
+        const bio = document.getElementById('bio').value.trim();
+        const profileImage = croppedProfileDataUrl() || document.getElementById('profileImageUrl').value.trim();
+        const bannerImage = bannerDataUrl || document.getElementById('bannerImageUrl').value.trim();
+        const payload = { displayName, bio };
+        if (profileImage) { payload.profileImage = profileImage; payload.avatarUrl = profileImage; payload.artistImage = profileImage; payload.artistImageUrl = profileImage; }
+        if (bannerImage) { payload.bannerImage = bannerImage; payload.bannerUrl = bannerImage; payload.artistBanner = bannerImage; payload.artistBannerUrl = bannerImage; }
+        payload.artistName = displayName;
+        payload.artistBio = bio;
         const result = await Auth.updateMyUserProfile(payload);
         const data = result.data || result;
         const user = data.user || data.profile || { ...Auth.getSavedUser(), ...payload };
         Auth.saveUser(user);
-        showMessage('Profile saved.', 'success');
+        showMessage('Profile saved. Your artist page will use this same profile if your role is artist or above.', 'success');
       } catch (error) {
         showMessage(error.message || 'Could not save settings.');
       } finally {
@@ -118,11 +165,13 @@
         button.textContent = 'Save profile';
       }
     });
+
     (async () => {
       const state = await Auth.getSessionState({ verify: true });
       if (!state.loggedIn) { location.href = 'login.html'; return; }
       document.getElementById('accountLink').textContent = Auth.getDisplayName();
       document.getElementById('accountLink').href = 'account.html';
+      if (Auth.hasAnyRole(['admin', 'owner'], state.user || Auth.getSavedUser())) document.getElementById('ownerPanelLink').style.display = 'inline-flex';
       await fillProfile().catch((error) => showMessage(error.message || 'Could not load profile.'));
     })();
   </script>

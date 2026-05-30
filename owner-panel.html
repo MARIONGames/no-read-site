@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Read — Owner Panel</title>
+  <link rel="stylesheet" href="auth.css?v=20260530-1" />
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="index.html"><img src="assets/no-read-logo.png" alt="No Read logo"><span>No Read Label</span></a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="music.html">Listen</a>
+        <a href="upload.html">Upload</a>
+        <a href="settings.html">Settings</a>
+        <a href="owner-panel.html">Owner Panel</a>
+        <a id="accountLink" href="login.html">Login</a>
+      </div>
+    </nav>
+
+    <main class="page-wrap">
+      <section class="page-title">
+        <h1>Owner Panel</h1>
+        <p>Admin/owner only. Take down or restore songs and ban accounts. This is separate from the listener page.</p>
+      </section>
+
+      <section class="panel" id="accessBox"><p class="muted">Checking access...</p></section>
+
+      <section class="panel" id="ownerPanel" style="display:none">
+        <h2 class="mini-title">Ban account</h2>
+        <p class="muted">Current server route expects a numeric user ID. Use the account ID from the users/admin console.</p>
+        <div class="grid two" style="margin-top:14px">
+          <label>User ID<input id="banUserId" placeholder="Example: 12"></label>
+          <label>Reason<input id="banReason" placeholder="Reason for ban"></label>
+        </div>
+        <button id="banButton" type="button" class="secondary" style="margin-top:12px">Ban account</button>
+        <div id="adminMessage" class="message"></div>
+      </section>
+
+      <section class="panel" id="songsPanel" style="display:none">
+        <div class="owner-heading"><h2 class="mini-title">Songs</h2><button id="refreshButton" type="button" class="secondary">Refresh</button></div>
+        <div class="table owner-table" id="adminSongs"><p class="muted">Loading songs...</p></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth-client.browser.js?v=20260530-1"></script>
+  <script>
+    const Auth = window.NoReadAuth;
+    const accessBox = document.getElementById('accessBox');
+    const ownerPanel = document.getElementById('ownerPanel');
+    const songsPanel = document.getElementById('songsPanel');
+    const adminSongs = document.getElementById('adminSongs');
+    const adminMessage = document.getElementById('adminMessage');
+    const songIdOf = (song) => song?.id || song?._id || song?.songId;
+    const artistName = (song) => song.artist?.displayName || song.artist?.artistName || song.artistName || song.uploaderName || 'No Read Artist';
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
+    function showAdmin(text, type = 'error') { adminMessage.className = `message show ${type}`; adminMessage.textContent = text; }
+
+    async function loadAdminSongs() {
+      adminSongs.innerHTML = '<p class="muted">Loading songs...</p>';
+      const payload = await Auth.adminListSongs();
+      const songs = payload.data?.songs || payload.songs || payload.data || [];
+      adminSongs.innerHTML = Array.isArray(songs) && songs.length ? songs.map(song => {
+        const id = songIdOf(song);
+        return `
+          <div class="table-row owner-row">
+            <strong>${escapeHtml(song.title || 'Untitled')}</strong>
+            <span class="muted">${escapeHtml(artistName(song))}</span>
+            <span class="pill">${escapeHtml(song.status || 'active')}</span>
+            <div class="song-actions">
+              <button type="button" class="secondary" data-takedown="${escapeHtml(id)}">Take down</button>
+              <button type="button" class="secondary" data-restore="${escapeHtml(id)}">Restore</button>
+            </div>
+          </div>`;
+      }).join('') : '<p class="muted">No songs found.</p>';
+      adminSongs.querySelectorAll('[data-takedown]').forEach(btn => btn.addEventListener('click', () => takeDownSong(btn.dataset.takedown)));
+      adminSongs.querySelectorAll('[data-restore]').forEach(btn => btn.addEventListener('click', () => restoreSong(btn.dataset.restore)));
+    }
+
+    async function takeDownSong(id) {
+      const reason = prompt('Reason for taking this song down?') || 'Taken down by owner panel';
+      await Auth.adminTakeDownSong(id, reason);
+      showAdmin('Song taken down.', 'success');
+      await loadAdminSongs();
+    }
+    async function restoreSong(id) {
+      await Auth.adminRestoreSong(id);
+      showAdmin('Song restored.', 'success');
+      await loadAdminSongs();
+    }
+    document.getElementById('banButton').addEventListener('click', async () => {
+      const id = document.getElementById('banUserId').value.trim();
+      const reason = document.getElementById('banReason').value.trim() || 'Banned from owner panel';
+      if (!id) return showAdmin('User ID is required.');
+      if (!confirm(`Ban user ${id}?`)) return;
+      try { await Auth.adminBanUser(id, reason); showAdmin('Account banned.', 'success'); }
+      catch (error) { showAdmin(error.message || 'Could not ban account.'); }
+    });
+    document.getElementById('refreshButton').addEventListener('click', () => loadAdminSongs().catch(error => showAdmin(error.message || 'Could not load songs.')));
+
+    (async () => {
+      const state = await Auth.getSessionState({ verify: true });
+      if (!state.loggedIn) { location.href = 'login.html'; return; }
+      document.getElementById('accountLink').textContent = Auth.getDisplayName();
+      document.getElementById('accountLink').href = 'account.html';
+      if (!Auth.hasAnyRole(['admin', 'owner'], state.user || Auth.getSavedUser())) {
+        accessBox.innerHTML = '<p class="muted">Only admin/owner accounts can open this page.</p>';
+        return;
+      }
+      accessBox.style.display = 'none';
+      ownerPanel.style.display = 'block';
+      songsPanel.style.display = 'block';
+      await loadAdminSongs();
+    })().catch(error => { accessBox.innerHTML = `<p class="muted">${escapeHtml(error.message || 'Owner panel failed to load.')}</p>`; });
+  </script>
+</body>
+</html>

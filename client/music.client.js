@@ -11,6 +11,10 @@ const adminListSongs = () => get('/music/admin/songs');
 const adminTakeDownSong = (id, reason) => post(`/music/admin/songs/${encodeURIComponent(id)}/takedown`, { reason });
 const adminRestoreSong = (id) => post(`/music/admin/songs/${encodeURIComponent(id)}/restore`);
 const adminBanUser = (id, reason) => post(`/music/admin/users/${encodeURIComponent(id)}/ban`, { reason });
+const listPlaylists = () => get('/music/playlists');
+const createPlaylist = (payload) => post('/music/playlists', payload);
+const getPlaylist = (playlistId) => get(`/music/playlists/${encodeURIComponent(playlistId)}`);
+const addSongToPlaylist = (playlistId, songId) => post(`/music/playlists/${encodeURIComponent(playlistId)}/songs`, { songId });
 
 module.exports = {
   listSongs,
@@ -22,5 +26,9 @@ module.exports = {
   adminListSongs,
   adminTakeDownSong,
   adminRestoreSong,
-  adminBanUser
+  adminBanUser,
+  listPlaylists,
+  createPlaylist,
+  getPlaylist,
+  addSongToPlaylist
 };

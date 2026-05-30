@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>No Read Label — Account</title>
   <meta name="description" content="Your No Read Label fan account.">
-  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="auth.css?v=20260530-1">
 </head>
 <body>
   <div class="shell">
@@ -37,7 +37,7 @@
 
         <div class="account-content">
           <div id="userCard" class="user-card"></div>
-          <a class="button secondary" href="music.html">Open music player</a><a class="button secondary" href="settings.html">Profile settings</a><a class="button secondary" id="artistPageButton" href="artist.html" style="display:none">Open artist page</a>
+          <a class="button secondary" href="music.html">Open music player</a><a class="button secondary" href="settings.html">Profile settings</a><a class="button secondary" id="artistPageButton" href="artist.html" style="display:none">Open artist page</a><a class="button secondary" id="ownerPanelButton" href="owner-panel.html" style="display:none">Owner panel</a>
           <button id="verifyBtn" type="button">Verify with server</button>
         <button id="logoutBtn" type="button">Logout</button>
         </div>
@@ -45,7 +45,7 @@
     </main>
   </div>
 
-  <script src="auth-client.browser.js?v=20260525-2"></script>
+  <script src="auth-client.browser.js?v=20260530-1"></script>
   <script>
     const message = document.getElementById('message');
     const subtitle = document.getElementById('subtitle');
@@ -112,6 +112,8 @@
         artistButton.style.display = 'inline-flex';
         artistButton.href = `artist.html?username=${encodeURIComponent(username)}`;
       }
+      const ownerButton = document.getElementById('ownerPanelButton');
+      if (ownerButton && window.NoReadAuth.hasAnyRole(['admin','owner'], user)) ownerButton.style.display = 'inline-flex';
       subtitle.textContent = state.source === 'server' ? 'Server session verified.' : 'Saved login loaded.';
       showMessage(state.source === 'server' ? 'Logged in. Server session verified.' : 'Logged in from saved account data.', 'success');
     };

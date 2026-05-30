@@ -157,7 +157,7 @@
     try {
       response = await fetch(url, fetchOptions);
     } catch (error) {
-      throw new Error('Could not connect to the No Read server. Make sure the server and Cloudflare tunnel are online.');
+      throw new Error('Could not connect to the No Read server. Try again in a moment.');
     }
 
     const payload = await parseResponseBody(response);
@@ -173,7 +173,7 @@
         } else if (cleanPath.includes('/auth/register')) {
           message = 'Register was rejected by the server. Check that /auth/register is public.';
         } else {
-          message = 'You are not logged in or your role cannot access this action.';
+          message = 'You are not logged in or this action is not available for your account.';
         }
       }
 
@@ -235,6 +235,111 @@
 
   const getId = (item) => item && (item.id || item._id || item.songId || item.userId);
 
+
+  const isFormDataLike = (value) => {
+    return typeof FormData !== 'undefined' && value instanceof FormData;
+  };
+
+  const firstFormValue = (formData, names) => {
+    for (const name of names) {
+      const value = formData.get(name);
+      if (value !== null && value !== undefined && value !== '') return value;
+    }
+    return null;
+  };
+
+  const appendTextIfPresent = (target, source, targetName, sourceNames = [targetName]) => {
+    const value = firstFormValue(source, sourceNames);
+    if (value !== null && value !== undefined && typeof value !== 'object') {
+      target.append(targetName, String(value));
+    }
+  };
+
+  const normalizeSongUploadFormData = (source) => {
+    if (!isFormDataLike(source)) return source;
+
+    const form = new FormData();
+
+    appendTextIfPresent(form, source, 'title');
+    appendTextIfPresent(form, source, 'description');
+    appendTextIfPresent(form, source, 'audioUrl');
+    appendTextIfPresent(form, source, 'explicit');
+    appendTextIfPresent(form, source, 'durationSeconds');
+    appendTextIfPresent(form, source, 'coverImageUrl');
+
+    // The current server multer route accepts ONLY these file field names:
+    // audio and cover. Do not send audioFile, coverFile, bannerFile, or banner.
+    const audio = firstFormValue(source, ['audio', 'audioFile']);
+    if (audio && typeof audio === 'object' && 'name' in audio) {
+      form.append('audio', audio);
+    }
+
+    const cover = firstFormValue(source, ['cover', 'coverFile']);
+    if (cover && typeof cover === 'object' && 'name' in cover) {
+      form.append('cover', cover);
+    }
+
+    return form;
+  };
+
+  const uploadSongWithXhr = (payload, options = {}) => new Promise((resolve, reject) => {
+    if (typeof XMLHttpRequest === 'undefined') {
+      requestFirst(['/music/upload', '/music/songs'], { method: 'POST', body: normalizeSongUploadFormData(payload) })
+        .then(resolve)
+        .catch(reject);
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    const timeoutMs = Number(options.timeoutMs || 5 * 60 * 1000);
+    const formData = normalizeSongUploadFormData(payload);
+    const token = getStoredToken();
+
+    xhr.open('POST', joinUrl(API_BASE_URL, '/music/upload'), true);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!options.onProgress || !event.lengthComputable) return;
+      const percent = Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      options.onProgress(percent, event.loaded, event.total);
+    };
+
+    xhr.onerror = () => reject(new Error('Upload failed. Check your connection and try again.'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out. Try a smaller MP3 file first.'));
+
+    xhr.onload = () => {
+      let payload = null;
+      try { payload = xhr.responseText ? JSON.parse(xhr.responseText) : null; }
+      catch (error) { payload = xhr.responseText ? { message: xhr.responseText } : null; }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const tokenFromResponse = findToken(payload);
+        if (tokenFromResponse) setStoredToken(tokenFromResponse);
+        const userFromResponse = findUser(payload);
+        if (userFromResponse) saveUser(userFromResponse);
+        resolve(payload);
+        return;
+      }
+
+      const message = payload && (payload.message || payload.error)
+        ? (payload.message || payload.error)
+        : xhr.status === 413
+          ? 'Song file is too large. Max size is 50 MB.'
+          : `Upload failed (${xhr.status}).`;
+      const err = new Error(message);
+      err.status = xhr.status;
+      err.payload = payload;
+      reject(err);
+    };
+
+    xhr.send(formData);
+  });
+
   const api = {
     apiBaseUrl: () => API_BASE_URL,
     request,
@@ -256,7 +361,9 @@
 
     listSongs: (query) => request('/music/songs', { query }),
     getSong: (id) => requestFirst([`/music/songs/${encodeURIComponent(id)}`, `/songs/${encodeURIComponent(id)}`]),
-    uploadSong: (payload) => requestFirst(['/music/upload', '/music/songs'], { method: 'POST', body: payload }),
+    uploadSong: (payload, options = {}) => isFormDataLike(payload)
+      ? uploadSongWithXhr(payload, options)
+      : requestFirst(['/music/upload', '/music/songs'], { method: 'POST', body: payload }),
     startSongPlay: (id) => requestFirst([`/music/play-session/${encodeURIComponent(id)}`, `/music/songs/${encodeURIComponent(id)}/play`], { method: 'POST' }),
     completeSongAd: (sessionId) => requestFirst(['/music/ad-complete', `/music/play-sessions/${encodeURIComponent(sessionId)}/complete-ad`], { method: 'POST', body: { playSessionId: sessionId, sessionId } }),
     getArtist: (username) => requestFirst([`/artists/${encodeURIComponent(username)}`, `/music/artists/${encodeURIComponent(username)}`]),
@@ -266,7 +373,16 @@
     adminBanUser: (id, reason) => requestFirst([`/music/admin/users/${encodeURIComponent(id)}/ban`, `/admin/users/${encodeURIComponent(id)}/ban`], { method: 'POST', body: { reason } }),
     getMyUserProfile: () => requestFirst(['/profile/me', '/users/me']),
     updateMyUserProfile: (payload) => requestFirst(['/profile/me', '/users/me/profile'], { method: 'PATCH', body: payload }),
-    getStreamUrl: (songId, sessionId) => `${API_BASE_URL}/music/stream/${encodeURIComponent(songId)}?playSessionId=${encodeURIComponent(sessionId)}&sessionId=${encodeURIComponent(sessionId)}`,
+    getStreamUrl: (songId, sessionId) => `${API_BASE_URL}/music/stream/${encodeURIComponent(songId)}?sessionId=${encodeURIComponent(sessionId)}`,
+    uploadSongWithXhr,
+    normalizeSongUploadFormData,
+
+    listPlaylists: () => requestFirst(['/music/playlists', '/playlists']),
+    createPlaylist: (payload) => requestFirst(['/music/playlists', '/playlists'], { method: 'POST', body: payload }),
+    getPlaylist: (playlistId) => requestFirst([`/music/playlists/${encodeURIComponent(playlistId)}`, `/playlists/${encodeURIComponent(playlistId)}`]),
+    addSongToPlaylist: (playlistId, songId) => requestFirst([`/music/playlists/${encodeURIComponent(playlistId)}/songs`, `/playlists/${encodeURIComponent(playlistId)}/songs`], { method: 'POST', body: { songId } }),
+    removeSongFromPlaylist: (playlistId, songId) => requestFirst([`/music/playlists/${encodeURIComponent(playlistId)}/songs/${encodeURIComponent(songId)}`, `/playlists/${encodeURIComponent(playlistId)}/songs/${encodeURIComponent(songId)}`], { method: 'DELETE' }),
+    deletePlaylist: (playlistId) => requestFirst([`/music/playlists/${encodeURIComponent(playlistId)}`, `/playlists/${encodeURIComponent(playlistId)}`], { method: 'DELETE' }),
 
     hasStoredToken: () => Boolean(getStoredToken()),
     isLocallyLoggedIn: () => Boolean(getStoredToken() || getSavedUser()),

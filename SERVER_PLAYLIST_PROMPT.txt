@@ -1,0 +1,108 @@
+Paste this into Copilot Chat with the No Read server project open:
+
+Add playlist support for the No Read music system.
+
+Do not rewrite the whole server.
+Do not remove the custom database, auth, music, artist, upload, or admin systems.
+Only add playlist support and make it compatible with the current HTML client.
+
+Client behavior already added:
+- music.html lets users create playlists.
+- It calls these endpoints when available, but falls back to localStorage if they are missing:
+  GET    /music/playlists
+  POST   /music/playlists
+  GET    /music/playlists/:playlistId
+  POST   /music/playlists/:playlistId/songs
+  DELETE /music/playlists/:playlistId/songs/:songId
+  DELETE /music/playlists/:playlistId
+
+Required server behavior:
+1. Playlists require login.
+2. Each playlist belongs to the logged-in user.
+3. Users can only view/edit/delete their own playlists.
+4. Admin/owner can optionally view all playlists, but do not expose that publicly yet.
+5. Playlist fields:
+   id
+   ownerId
+   name
+   description optional
+   songIds array
+   createdAt
+   updatedAt
+6. Playlist name is required, 1-80 chars.
+7. Song IDs added to playlist must exist and must be active/public songs.
+8. Never duplicate the same song in the same playlist.
+9. Return safe song objects when returning playlist contents.
+10. Store playlists in the current custom database format. If the DB has record/schema support, add a PLAYLIST record type and an index playlistsByOwnerId.
+
+Routes to add:
+GET /music/playlists
+- auth required
+- returns { success:true, playlists:[...] }
+
+POST /music/playlists
+- auth required
+- body: { name, description? }
+- creates playlist for req.user/req.account
+- returns { success:true, playlist }
+
+GET /music/playlists/:playlistId
+- auth required
+- only owner/admin/owner can access
+- returns playlist with songs expanded
+
+POST /music/playlists/:playlistId/songs
+- auth required
+- body: { songId }
+- only owner can add
+- validates song exists and is active
+- returns updated playlist
+
+DELETE /music/playlists/:playlistId/songs/:songId
+- auth required
+- only owner can remove
+- returns updated playlist
+
+DELETE /music/playlists/:playlistId
+- auth required
+- only owner can delete
+- returns success true
+
+Suggested files to update/create:
+- src/routes/music.routes.js
+- src/controllers/music.controller.js or src/controllers/playlist.controller.js
+- src/services/music.service.js or src/services/playlist.service.js
+- src/database/noread-schema.js
+- src/database/noread-db-v2.js or the current DB layer
+- src/database/noread-indexes.js
+
+Compatibility aliases:
+Also optionally support /playlists routes as aliases:
+GET /playlists
+POST /playlists
+GET /playlists/:playlistId
+POST /playlists/:playlistId/songs
+DELETE /playlists/:playlistId/songs/:songId
+DELETE /playlists/:playlistId
+
+Security:
+- /music/playlists must require login.
+- Do not allow users to modify someone else's playlist.
+- Do not return passwordHash, session tokens, token hashes, DB secrets, or private fields.
+- Validate all input.
+
+Test commands after implementation:
+1. Login and save cookies:
+   curl.exe -i -c cookies.txt -H "Content-Type: application/json" -X POST --data "{\"username\":\"gay\",\"password\":\"YOUR_PASSWORD\"}" https://api.rubby-studios.com/auth/login
+
+2. Create playlist:
+   curl.exe -i -b cookies.txt -H "Content-Type: application/json" -X POST --data "{\"name\":\"My No Read Playlist\"}" https://api.rubby-studios.com/music/playlists
+
+3. List playlists:
+   curl.exe -i -b cookies.txt https://api.rubby-studios.com/music/playlists
+
+4. Add song:
+   curl.exe -i -b cookies.txt -H "Content-Type: application/json" -X POST --data "{\"songId\":\"SONG_ID_HERE\"}" https://api.rubby-studios.com/music/playlists/PLAYLIST_ID_HERE/songs
+
+5. Get playlist:
+   curl.exe -i -b cookies.txt https://api.rubby-studios.com/music/playlists/PLAYLIST_ID_HERE
