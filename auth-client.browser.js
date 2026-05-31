@@ -6,6 +6,7 @@
   const API_BASE_URL = 'https://api.rubby-studios.com';
   const TOKEN_STORAGE_KEY = 'NO_READ_AUTH_TOKEN';
   const USER_STORAGE_KEY = 'NO_READ_AUTH_USER';
+  const BANNED_PAGE = 'banned.html';
 
   const normalizeBaseUrl = (value) => String(value || API_BASE_URL).trim().replace(/\/+$/, '');
 
@@ -90,6 +91,31 @@
   };
   const clearSavedUser = () => localStorage.removeItem(USER_STORAGE_KEY);
 
+
+  const isBannedPayload = (payload) => {
+    if (!payload || typeof payload !== 'object') return false;
+    const code = String(payload.code || payload.errorCode || payload.data?.code || '').toUpperCase();
+    const type = String(payload.type || payload.errorType || payload.data?.type || '').toLowerCase();
+    const message = String(payload.message || payload.error || payload.data?.message || '').toLowerCase();
+    return code === 'ACCOUNT_BANNED'
+      || type.includes('banned')
+      || payload.banned === true
+      || payload.data?.banned === true
+      || message.includes('banned');
+  };
+
+  const isBannedPage = () => String(window.location.pathname || '').toLowerCase().endsWith('/banned.html')
+    || String(window.location.pathname || '').toLowerCase().endsWith('banned.html');
+
+  const redirectToBanned = () => {
+    clearStoredToken();
+    clearSavedUser();
+    try { sessionStorage.setItem('NO_READ_BANNED_REDIRECT', String(Date.now())); } catch (error) {}
+    if (!isBannedPage()) {
+      window.location.href = 'banned.html';
+    }
+  };
+
   const extractAuthUser = (payload, fallback = {}) => {
     const user = findUser(payload) || fallback || null;
     if (!user || typeof user !== 'object') return null;
@@ -161,6 +187,16 @@
     }
 
     const payload = await parseResponseBody(response);
+    if (response.status === 403 && isBannedPayload(payload)) {
+      redirectToBanned();
+      const err = new Error('This account has been banned.');
+      err.status = response.status;
+      err.code = 'ACCOUNT_BANNED';
+      err.payload = payload;
+      err.path = path;
+      throw err;
+    }
+
     if (!response.ok) {
       let message = payload && (payload.message || payload.error)
         ? (payload.message || payload.error)
@@ -168,7 +204,9 @@
 
       if (response.status === 401 || response.status === 403) {
         const cleanPath = String(path || '').toLowerCase();
-        if (cleanPath.includes('/auth/login')) {
+        if (isBannedPayload(payload)) {
+          message = 'This account has been banned.';
+        } else if (cleanPath.includes('/auth/login')) {
           message = 'Login was rejected by the server. Check username/password and make sure /auth/login is public.';
         } else if (cleanPath.includes('/auth/register')) {
           message = 'Register was rejected by the server. Check that /auth/register is public.';
@@ -179,6 +217,7 @@
 
       const err = new Error(message);
       err.status = response.status;
+      err.code = payload && payload.code ? payload.code : 'HTTP_ERROR';
       err.payload = payload;
       err.path = path;
       throw err;
@@ -221,14 +260,22 @@
         if (user) saveUser(user);
         return { loggedIn: true, user, source: 'server', payload: statusPayload };
       }
-    } catch (ignored) {}
+    } catch (error) {
+      if (error && (error.code === 'ACCOUNT_BANNED' || isBannedPayload(error.payload))) {
+        return { loggedIn: false, user: null, source: 'banned', banned: true };
+      }
+    }
 
     try {
       const mePayload = await request('/auth/me');
       const user = extractAuthUser(mePayload, savedUser || {});
       if (user) saveUser(user);
       return { loggedIn: true, user, source: 'server', payload: mePayload };
-    } catch (ignored) {}
+    } catch (error) {
+      if (error && (error.code === 'ACCOUNT_BANNED' || isBannedPayload(error.payload))) {
+        return { loggedIn: false, user: null, source: 'banned', banned: true };
+      }
+    }
 
     return { loggedIn: Boolean(savedUser || savedToken), user: savedUser, source: savedUser || savedToken ? 'local' : 'none' };
   };
@@ -395,7 +442,9 @@
     saveUser,
     getStoredToken,
     getId,
-    clearLocalSession: () => { clearStoredToken(); clearSavedUser(); }
+    clearLocalSession: () => { clearStoredToken(); clearSavedUser(); },
+    isBannedPayload,
+    redirectToBanned
   };
 
   window.NoReadAuth = api;
