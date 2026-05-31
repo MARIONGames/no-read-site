@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Marios Kouretis. All Rights Reserved.
-const { get, post } = require('./http');
+const { get, post, del } = require('./http');
 
 const listSongs = (query = {}) => get('/music/songs', { query });
 const getSong = (id) => get(`/music/songs/${encodeURIComponent(id)}`);
@@ -15,6 +15,8 @@ const listPlaylists = () => get('/music/playlists');
 const createPlaylist = (payload) => post('/music/playlists', payload);
 const getPlaylist = (playlistId) => get(`/music/playlists/${encodeURIComponent(playlistId)}`);
 const addSongToPlaylist = (playlistId, songId) => post(`/music/playlists/${encodeURIComponent(playlistId)}/songs`, { songId });
+const removeSongFromPlaylist = (playlistId, songId) => del(`/music/playlists/${encodeURIComponent(playlistId)}/songs/${encodeURIComponent(songId)}`);
+const deletePlaylist = (playlistId) => del(`/music/playlists/${encodeURIComponent(playlistId)}`);
 
 module.exports = {
   listSongs,
@@ -30,5 +32,7 @@ module.exports = {
   listPlaylists,
   createPlaylist,
   getPlaylist,
-  addSongToPlaylist
+  addSongToPlaylist,
+  removeSongFromPlaylist,
+  deletePlaylist
 };

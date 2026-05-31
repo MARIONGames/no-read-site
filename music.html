@@ -99,9 +99,11 @@
     const playlistForm = document.getElementById('playlistForm');
     const playlistNameInput = document.getElementById('playlistNameInput');
 
-    const PLAYLISTS_KEY = 'NO_READ_LOCAL_PLAYLISTS_V1';
     let allSongs = [];
+    let playlists = [];
     let activePlaylistId = null;
+    let activePlaylistSongs = [];
+    let loggedIn = false;
 
     const apiUrl = (path) => {
       if (!path) return '';
@@ -111,7 +113,7 @@
 
     const songIdOf = (song) => song?.id || song?._id || song?.songId;
     const artistUsername = (song) => song?.artist?.username || song?.artistUsername || song?.uploaderUsername || song?.username || '';
-    const artistName = (song) => song?.artist?.displayName || song?.artist?.artistName || song?.artistName || song?.uploaderName || song?.displayName || 'No Read Artist';
+    const artistName = (song) => song?.artist?.displayName || song?.artist?.artistName || song?.artist?.username || song?.artistName || song?.uploaderName || song?.displayName || 'No Read Artist';
     const songCover = (song) => apiUrl(song?.coverImageUrl || song?.coverUrl || song?.coverPath || song?.imageUrl || song?.artworkUrl || 'assets/no-read-logo.png');
     const lyricsOf = (song) => song?.lyrics || song?.description || '';
     const directAudioOf = (song) => apiUrl(song?.audioUrl || song?.audioPath || song?.fileUrl || song?.streamUrl || song?.url || '');
@@ -120,52 +122,94 @@
       return String(value ?? '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
     }
 
-    function getPlaylists() {
-      try {
-        const value = JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || '[]');
-        return Array.isArray(value) ? value : [];
-      } catch (error) {
-        return [];
-      }
+    function playlistSongCount(playlist) {
+      if (Array.isArray(playlist?.songIds)) return playlist.songIds.length;
+      if (Array.isArray(playlist?.songs)) return playlist.songs.length;
+      return 0;
     }
 
-    function savePlaylists(playlists) {
-      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+    async function loadPlaylists() {
+      if (!loggedIn) {
+        playlists = [];
+        playlistList.innerHTML = '<p class="muted">Login to create and sync playlists.</p>';
+        return;
+      }
+
+      try {
+        const payload = await Auth.listPlaylists();
+        const list = payload.data?.playlists || payload.playlists || payload.data || [];
+        playlists = Array.isArray(list) ? list : [];
+        renderPlaylists();
+      } catch (error) {
+        playlistList.innerHTML = `<p class="muted">${escapeHtml(error.message || 'Could not load playlists.')}</p>`;
+      }
     }
 
     async function createPlaylist(name) {
       const clean = String(name || '').trim();
       if (!clean) return null;
-      let playlist = null;
-      try {
-        const payload = await Auth.createPlaylist({ name: clean });
-        playlist = payload.playlist || payload.data?.playlist || payload.data || null;
-      } catch (error) {
-        // Server playlist routes are optional for now; local playlists keep the UI usable.
+      if (!loggedIn) {
+        alert('Login to create and sync playlists.');
+        return null;
       }
-      if (!playlist || typeof playlist !== 'object') {
-        playlist = { id: `local_${Date.now()}`, name: clean, songs: [], local: true };
-      }
-      const playlists = getPlaylists();
-      playlists.push(playlist);
-      savePlaylists(playlists);
-      renderPlaylists();
+
+      const payload = await Auth.createPlaylist({ name: clean });
+      const playlist = payload.data?.playlist || payload.playlist || payload.data || null;
+      await loadPlaylists();
       return playlist;
+    }
+
+    async function deletePlaylist(playlistId) {
+      if (!loggedIn) {
+        alert('Login to manage playlists.');
+        return;
+      }
+
+      if (!confirm('Delete this playlist?')) return;
+      await Auth.deletePlaylist(playlistId);
+      if (String(activePlaylistId) === String(playlistId)) {
+        activePlaylistId = null;
+        activePlaylistSongs = [];
+        renderSongs(filterSongs(allSongs));
+      }
+      await loadPlaylists();
+    }
+
+    async function openPlaylist(playlistId) {
+      activePlaylistId = playlistId;
+      try {
+        const payload = await Auth.getPlaylist(playlistId);
+        const playlist = payload.data?.playlist || payload.playlist || payload.data || null;
+        activePlaylistSongs = Array.isArray(playlist?.songs)
+          ? playlist.songs
+          : allSongs.filter((song) => (playlist?.songIds || []).some((id) => String(id) === String(songIdOf(song))));
+        renderSongs(filterSongs(activePlaylistSongs));
+        renderPlaylists();
+      } catch (error) {
+        alert(error.message || 'Could not open playlist.');
+      }
     }
 
     async function addSongToPlaylist(song) {
       const id = songIdOf(song);
       if (!id) return;
-      let playlists = getPlaylists();
+      if (!loggedIn) {
+        alert('Login to create and sync playlists.');
+        return;
+      }
+
       if (!playlists.length) {
         const name = prompt('Create playlist name:');
         if (!name) return;
-        await createPlaylist(name);
-        playlists = getPlaylists();
+        const created = await createPlaylist(name);
+        if (!created) return;
+        await Auth.addSongToPlaylist(created.id, id);
+        await loadPlaylists();
+        return;
       }
 
       const names = playlists.map((p, index) => `${index + 1}. ${p.name}`).join('\n');
-      const choice = prompt(`Add to playlist:\n${names}\n\nType playlist number or a new playlist name:`);
+      const choice = prompt(`Add to playlist:\n${names}\n\nType playlist number, or type a new playlist name:`);
       if (!choice) return;
 
       let playlist = null;
@@ -174,45 +218,54 @@
         playlist = playlists[number - 1];
       } else {
         playlist = await createPlaylist(choice.trim());
-        playlists = getPlaylists();
       }
       if (!playlist) return;
 
-      try { await Auth.addSongToPlaylist(playlist.id, id); } catch (error) {}
+      await Auth.addSongToPlaylist(playlist.id, id);
+      await loadPlaylists();
+      if (String(activePlaylistId) === String(playlist.id)) await openPlaylist(playlist.id);
+    }
 
-      const updated = playlists.map((p) => {
-        if (String(p.id) !== String(playlist.id)) return p;
-        const songs = Array.isArray(p.songs) ? p.songs : [];
-        if (!songs.some((saved) => String(songIdOf(saved)) === String(id))) songs.push(song);
-        return { ...p, songs };
-      });
-      savePlaylists(updated);
-      renderPlaylists();
+    async function removeSongFromActivePlaylist(songId) {
+      if (!activePlaylistId || !songId) return;
+      await Auth.removeSongFromPlaylist(activePlaylistId, songId);
+      await loadPlaylists();
+      await openPlaylist(activePlaylistId);
     }
 
     function renderPlaylists() {
-      const playlists = getPlaylists();
-      if (!playlists.length) {
-        playlistList.innerHTML = '<p class="muted">No playlists yet.</p>';
+      if (!loggedIn) {
+        playlistList.innerHTML = '<p class="muted">Login to create and sync playlists.</p>';
         return;
       }
-      playlistList.innerHTML = playlists.map((playlist) => `
-        <button class="playlist-item ${String(activePlaylistId) === String(playlist.id) ? 'active' : ''}" type="button" data-playlist-id="${escapeHtml(playlist.id)}">
-          <span>${escapeHtml(playlist.name || 'Playlist')}</span>
-          <small>${(playlist.songs || []).length} songs</small>
-        </button>
-      `).join('') + '<button id="showAllSongsButton" class="playlist-item show-all" type="button">All songs</button>';
+
+      const showAll = '<button id="showAllSongsButton" class="playlist-item show-all" type="button">All songs</button>';
+      if (!playlists.length) {
+        playlistList.innerHTML = '<p class="muted">No playlists yet.</p>' + showAll;
+      } else {
+        playlistList.innerHTML = playlists.map((playlist) => `
+          <div class="playlist-item-wrap">
+            <button class="playlist-item ${String(activePlaylistId) === String(playlist.id) ? 'active' : ''}" type="button" data-playlist-id="${escapeHtml(playlist.id)}">
+              <span>${escapeHtml(playlist.name || 'Playlist')}</span>
+              <small>${playlistSongCount(playlist)} songs</small>
+            </button>
+            <button class="playlist-delete-button" type="button" data-delete-playlist="${escapeHtml(playlist.id)}" title="Delete playlist">×</button>
+          </div>
+        `).join('') + showAll;
+      }
 
       playlistList.querySelectorAll('[data-playlist-id]').forEach((button) => {
-        button.addEventListener('click', () => {
-          activePlaylistId = button.dataset.playlistId;
-          const playlist = getPlaylists().find((item) => String(item.id) === String(activePlaylistId));
-          renderSongs(Array.isArray(playlist?.songs) ? playlist.songs : []);
-          renderPlaylists();
+        button.addEventListener('click', () => openPlaylist(button.dataset.playlistId));
+      });
+      playlistList.querySelectorAll('[data-delete-playlist]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          deletePlaylist(button.dataset.deletePlaylist).catch((error) => alert(error.message || 'Could not delete playlist.'));
         });
       });
       document.getElementById('showAllSongsButton')?.addEventListener('click', () => {
         activePlaylistId = null;
+        activePlaylistSongs = [];
         renderSongs(filterSongs(allSongs));
         renderPlaylists();
       });
@@ -229,13 +282,16 @@
 
     function renderSongs(songs) {
       if (!songs.length) {
-        songsList.innerHTML = '<p class="muted empty-list">No songs found.</p>';
+        songsList.innerHTML = `<p class="muted empty-list">${activePlaylistId ? 'This playlist is empty.' : 'No songs found.'}</p>`;
         return;
       }
       songsList.innerHTML = songs.map((song, index) => {
         const id = songIdOf(song);
         const username = artistUsername(song);
         const lyrics = lyricsOf(song);
+        const playlistAction = activePlaylistId
+          ? `<button class="playlist-remove-button secondary" type="button" data-remove-song="${escapeHtml(id)}" title="Remove from playlist">Remove</button>`
+          : `<button class="playlist-add-button secondary" type="button" data-add-song="${escapeHtml(id)}" title="Add to playlist">＋</button>`;
         return `
           <article class="song-row improved-song-row" data-song-id="${escapeHtml(id)}">
             <span class="song-index">${index + 1}</span>
@@ -245,7 +301,7 @@
             </div>
             <div>${username ? `<a href="artist.html?username=${encodeURIComponent(username)}">${escapeHtml(artistName(song))}</a>` : escapeHtml(artistName(song))}</div>
             <button class="lyrics-toggle secondary" type="button" data-lyrics="${escapeHtml(lyrics)}">Lyrics</button>
-            <button class="playlist-add-button secondary" type="button" data-add-song="${escapeHtml(id)}" title="Add to playlist">＋</button>
+            ${playlistAction}
             <button class="play-round" type="button" data-play-song="${escapeHtml(id)}">▶</button>
           </article>`;
       }).join('');
@@ -260,7 +316,13 @@
         button.addEventListener('click', (event) => {
           event.stopPropagation();
           const song = songs.find(s => String(songIdOf(s)) === String(button.dataset.addSong));
-          if (song) addSongToPlaylist(song);
+          if (song) addSongToPlaylist(song).catch((error) => alert(error.message || 'Could not add song.'));
+        });
+      });
+      songsList.querySelectorAll('[data-remove-song]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          removeSongFromActivePlaylist(button.dataset.removeSong).catch((error) => alert(error.message || 'Could not remove song.'));
         });
       });
       songsList.querySelectorAll('.song-row').forEach((row) => {
@@ -286,8 +348,9 @@
         const songs = payload.data?.songs || payload.songs || payload.data || [];
         allSongs = Array.isArray(songs) ? songs : [];
         activePlaylistId = null;
+        activePlaylistSongs = [];
         renderSongs(filterSongs(allSongs));
-        renderPlaylists();
+        await loadPlaylists();
       } catch (error) {
         songsList.innerHTML = `<p class="muted empty-list">${escapeHtml(error.message || 'Could not load songs.')}</p>`;
       }
@@ -389,12 +452,12 @@
 
     document.getElementById('searchButton').addEventListener('click', () => {
       activePlaylistId = null;
+      activePlaylistSongs = [];
       loadSongs();
     });
     searchInput.addEventListener('input', () => {
       if (activePlaylistId) {
-        const playlist = getPlaylists().find((item) => String(item.id) === String(activePlaylistId));
-        renderSongs(filterSongs(Array.isArray(playlist?.songs) ? playlist.songs : []));
+        renderSongs(filterSongs(activePlaylistSongs));
       } else {
         renderSongs(filterSongs(allSongs));
       }
@@ -404,19 +467,28 @@
     });
 
     document.getElementById('newPlaylistButton').addEventListener('click', () => {
+      if (!loggedIn) {
+        alert('Login to create and sync playlists.');
+        return;
+      }
       playlistForm.style.display = playlistForm.style.display === 'none' ? 'grid' : 'none';
       playlistNameInput.focus();
     });
     document.getElementById('savePlaylistButton').addEventListener('click', async () => {
-      const playlist = await createPlaylist(playlistNameInput.value);
-      if (playlist) {
-        playlistNameInput.value = '';
-        playlistForm.style.display = 'none';
+      try {
+        const playlist = await createPlaylist(playlistNameInput.value);
+        if (playlist) {
+          playlistNameInput.value = '';
+          playlistForm.style.display = 'none';
+        }
+      } catch (error) {
+        alert(error.message || 'Could not create playlist.');
       }
     });
 
     (async () => {
       const state = await Auth.getSessionState({ verify: true });
+      loggedIn = Boolean(state.loggedIn);
       if (state.loggedIn) {
         document.getElementById('accountLink').textContent = Auth.getDisplayName();
         document.getElementById('accountLink').href = 'account.html';
@@ -424,7 +496,6 @@
           document.getElementById('ownerPanelLink').style.display = 'block';
         }
       }
-      renderPlaylists();
       await loadSongs();
     })();
   </script>

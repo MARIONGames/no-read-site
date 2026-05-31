@@ -277,3 +277,27 @@ html, body { min-height: 100%; overflow-y: auto; }
   .compact-now-card .pill { grid-column:1 / -1; }
   .bottom-cover { width:42px; height:42px; }
 }
+
+
+.playlist-item-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.playlist-delete-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,22,22,.12);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.playlist-remove-button {
+  min-width: 72px;
+}

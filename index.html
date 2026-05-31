@@ -853,7 +853,6 @@
         <a href="music.html">Listen</a>
         <a href="upload.html">Upload</a>
         <a href="settings.html">Settings</a>
-        <a id="androidDownloadNav" href="download.html" style="display:none">Android App</a>
         <a href="#about">About</a>
         <a id="navAccountLink" href="login.html">Account</a>
       </div>
@@ -1040,7 +1039,6 @@
           <a href="https://www.tiktok.com/@noreadlabel" target="_blank" rel="noopener noreferrer">TikTok</a>
           <a id="footerAccountLink" href="login.html">Account</a>
           <a href="https://www.instagram.com/noreadlabel/" target="_blank" rel="noopener noreferrer">Instagram</a>
-          <a id="androidDownloadFooter" href="download.html" style="display:none">Android App</a>
           <a href="#profiles">SoundCloud</a>
         </div>
       </div>
@@ -1053,13 +1051,6 @@
       const accountLink = document.getElementById('navAccountLink');
       const footerAccountLink = document.getElementById('footerAccountLink');
       const cta = document.getElementById('navAuthCta');
-
-      const androidNav = document.getElementById('androidDownloadNav');
-      const androidFooter = document.getElementById('androidDownloadFooter');
-      if (/Android/i.test(navigator.userAgent || '')) {
-        if (androidNav) androidNav.style.display = '';
-        if (androidFooter) androidFooter.style.display = '';
-      }
 
       const applyLoggedInUi = (user) => {
         const name = window.NoReadAuth.getDisplayName() || (user && (user.username || user.name || user.email)) || 'Account';
